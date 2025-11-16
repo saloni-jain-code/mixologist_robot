@@ -11,7 +11,8 @@ import numpy as np
 import genesis as gs
 import torch
 
-CUP_START_POS = (0.65, 0.00, 0.06)
+CUP_START_POS = (0.65, 0.00, 0.02)
+LIQUID_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
 ########################## init ##########################
 gs.init(backend=gs.gpu)
 
@@ -30,19 +31,55 @@ scene = gs.Scene(
 )
 
 ########################## entities ##########################
+liquid = scene.add_entity(
+        material=gs.materials.PBD.Liquid(
+            sampler="regular",
+            rho=1.0,
+            # density_relaxation=1.0,
+            # viscosity_relaxation=0.0,
+        ),
+        morph=gs.morphs.Cylinder(
+            height=0.1,        # 12 cm tall
+            radius=0.015,        # 3 cm radius
+            pos=LIQUID_START_POS,  # sitting on plane (z = height/2)),
+        ),
+)
+
+cam = scene.add_camera(
+    model='pinhole',
+    res=(320, 320),
+    pos=(0.6, -0.3, 0.9),        # put camera above robot
+    lookat=CUP_START_POS,        # look at the cup
+    up=(0,0,1),
+    fov=60,
+    GUI=False,                  # if True: opens a window with the camera view
+    near=0.05,
+    far=5.0,
+)
+
 plane = scene.add_entity(gs.morphs.Plane())
 
+# cup = scene.add_entity(
+#     gs.morphs.Cylinder(
+#         height=0.12,        # 12 cm tall
+#         radius=0.03,        # 3 cm radius
+#         pos=CUP_START_POS,  # sitting on plane (z = height/2)
+#     )
+# )
+
+# cup = scene.add_entity(
+#     gs.morphs.MJCF(file='object_sim/cup/object.xml', pos=CUP_START_POS, scale=2),
+# )
+
 cup = scene.add_entity(
-    gs.morphs.Cylinder(
-        height=0.12,        # 12 cm tall
-        radius=0.03,        # 3 cm radius
-        pos=CUP_START_POS,  # sitting on plane (z = height/2)
-    )
+    gs.morphs.Mesh(file='cup.obj', pos=CUP_START_POS, scale=0.2, ),
 )
 
 franka = scene.add_entity(
     gs.morphs.MJCF(file='xml/franka_emika_panda/panda.xml'),
 )
+
+
 
 ########################## build ##########################
 scene.build()
@@ -124,7 +161,7 @@ pregrasp_offset  = -0.14
 gripper_offset = np.array([0.0, 0.10, 0.0]) # offset from center of end-effector to center of grip
 retreat_distance = 0 # 0.16
 open_width  = 0.06
-close_force = -0.8
+close_force = -1.0
 
 pregrasp_pos = target_pos - approach_dir * pregrasp_offset
 grasp_pos    = target_pos.copy() + gripper_offset
@@ -139,6 +176,7 @@ path = franka.plan_path(qpos_goal=q_pre, num_waypoints=200)
 for wp in path:
     franka.control_dofs_position(wp)
     scene.step()
+    
 for _ in range(80): scene.step()
 
 # ------------- approach ----------------
