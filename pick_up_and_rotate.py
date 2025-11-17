@@ -10,9 +10,16 @@ python pick_up_and_rotate.py
 import numpy as np
 import genesis as gs
 import torch
+import sys
+
+pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
+print("Pour level (high, medium, or low): ", pour_level)
+pour_levels = {"high":1.4, "medium": 1.625, "low": 1.675}
 
 CUP_START_POS = (0.65, 0.0, 0.12)
+CUP2_START_POS = (0.76, 0.0, 0.12)
 CUP_SCALE = 0.025
+CUP2_SCALE = 0.032
 LIQUID_RADIUS = 0.025
 LIQUID_HEIGHT = 0.1
 LIQUID_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
@@ -76,6 +83,10 @@ plane = scene.add_entity(gs.morphs.Plane())
 
 cup = scene.add_entity(
     gs.morphs.Mesh(file='cup.obj', pos=CUP_START_POS, scale=CUP_SCALE, euler=(90, 0, 0)),
+)
+
+cup2 = scene.add_entity(
+    gs.morphs.Mesh(file='cup.obj', pos=CUP2_START_POS, scale=CUP2_SCALE, euler=(90, 0, 0)),
 )
 
 franka = scene.add_entity(
@@ -211,12 +222,23 @@ for _ in range(200):
     
 
 # Rotate
-pour_levels = [1.5, 1.625, 1.675]
 joint7_idx = 6   # zero-based index
 for i in range(100):
     if i == 0:
         franka.control_dofs_position(
-            np.array([1.625]),          # target angle in radians
+            np.array([pour_levels[pour_level]]),          # target angle in radians
+            np.array([joint7_idx]),   # which joint to command
+        )
+    print("control force:", franka.get_dofs_control_force([joint7_idx]))
+    scene.step()
+
+for _ in range(50):
+    scene.step()
+
+for i in range(100):
+    if i == 0:
+        franka.control_dofs_position(
+            np.array([2.7]),          # target angle in radians
             np.array([joint7_idx]),   # which joint to command
         )
     print("control force:", franka.get_dofs_control_force([joint7_idx]))
