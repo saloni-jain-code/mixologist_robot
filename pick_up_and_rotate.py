@@ -14,15 +14,21 @@ import sys
 
 pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
 print("Pour level (high, medium, or low): ", pour_level)
-pour_levels = {"high":1.4, "medium": 1.625, "low": 1.675}
+pour_levels = {"high":1, "medium": 1.625, "low": 1.675}
 
 CUP_START_POS = (0.65, 0.0, 0.12)
 CUP2_START_POS = (0.76, 0.0, 0.12)
+CUP_TEST_START_POS = (0.85, 0.0, 0.12)
 CUP_SCALE = 0.025
 CUP2_SCALE = 0.032
 LIQUID_RADIUS = 0.025
 LIQUID_HEIGHT = 0.1
 LIQUID_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
+
+# Cup2 bounds (approximate cylinder bounds)
+CUP2_HEIGHT = 0.12 
+CUP2_RADIUS = 0.03
+
 ########################## init ##########################
 gs.init(backend=gs.gpu)
 
@@ -87,6 +93,14 @@ cup = scene.add_entity(
 
 cup2 = scene.add_entity(
     gs.morphs.Mesh(file='cup.obj', pos=CUP2_START_POS, scale=CUP2_SCALE, euler=(90, 0, 0)),
+)
+
+cupTest = scene.add_entity(
+    gs.morphs.Cylinder(
+        height=CUP2_HEIGHT,
+        radius=CUP2_RADIUS,
+        pos=CUP_TEST_START_POS,
+    )
 )
 
 franka = scene.add_entity(
@@ -164,6 +178,44 @@ def side_grasp_quat(approach_dir_world, up_hint_world=np.array([0,0,1]), order="
         w,x,y,z = q_wxyz
         return np.array([x,y,z,w])
 
+def count_particles_in_cup2():
+    """
+    Count how many liquid particles are inside cup2's cylindrical bounds.
+    """
+    # Get particle positions (shape: [n_particles, 3])
+    particle_pos = liquid.get_particles_pos().cpu().numpy()
+    print("PARTICLE POS SHAPE:", particle_pos.shape)
+    print("PARTICLE POS:", particle_pos)
+    writer = open("particle_positions.txt", "w")
+    for p in particle_pos:
+        writer.write(f"{p[0]}, {p[1]}, {p[2]}\n")
+    writer.close()
+    # Get cup2's current position
+    cup2_pos = cup2.get_pos().cpu().numpy()
+    
+    # Calculate relative positions (x, y, z) from cup2 center
+    rel_pos = particle_pos - cup2_pos
+    
+    # Check cylinder bounds:
+    # 1. Radial distance from cup2's center (x-y plane)
+    radial_dist = np.sqrt(rel_pos[:, 0]**2 + rel_pos[:, 1]**2)
+    
+    # 2. Height within cup (z axis) - cup opening at top
+    # Assuming cup is upright with opening at +z direction
+    z_min = -CUP2_HEIGHT / 2  # bottom of cup
+    z_max = CUP2_HEIGHT / 2   # top of cup (opening)
+    
+    # Particles are inside if:
+    # - radial distance < radius
+    # - z is between bottom and top
+    inside_radially = radial_dist < CUP2_RADIUS
+    inside_vertically = (rel_pos[:, 2] > z_min) & (rel_pos[:, 2] < z_max)
+    
+    particles_inside = np.sum(inside_radially & inside_vertically)
+    
+    return particles_inside, len(particle_pos)
+
+
 ########################## side grasp motion ##########################
 end_effector = franka.get_link('hand')
 
@@ -181,6 +233,10 @@ pregrasp_pos = target_pos - approach_dir * pregrasp_offset
 grasp_pos    = target_pos.copy() + gripper_offset
 
 # ------------- move to pregrasp ----------------
+in_cup, total = count_particles_in_cup2()
+print(f"\n=== Initial State ===")
+print(f"Total particles in cup2: {in_cup}/{total} ({100*in_cup/total:.1f}%)")
+
 q_pre = franka.inverse_kinematics(
     link=end_effector, 
     pos=pregrasp_pos, 
@@ -246,3 +302,7 @@ for i in range(100):
 
 for _ in range(200):
     scene.step()
+
+in_cup, total = count_particles_in_cup2()
+print(f"\n=== Final Result ===")
+print(f"Total particles in cup2: {in_cup}/{total} ({100*in_cup/total:.1f}%)")
