@@ -11,7 +11,10 @@ import numpy as np
 import genesis as gs
 import torch
 
-CUP_START_POS = (0.65, 0.00, 0.02)
+CUP_START_POS = (0.65, 0.0, 0.12)
+CUP_SCALE = 0.025
+LIQUID_RADIUS = 0.025
+LIQUID_HEIGHT = 0.1
 LIQUID_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
 ########################## init ##########################
 gs.init(backend=gs.gpu)
@@ -39,8 +42,8 @@ liquid = scene.add_entity(
             # viscosity_relaxation=0.0,
         ),
         morph=gs.morphs.Cylinder(
-            height=0.1,        # 12 cm tall
-            radius=0.015,        # 3 cm radius
+            height=LIQUID_HEIGHT,        # 12 cm tall
+            radius=LIQUID_RADIUS,        # 3 cm radius
             pos=LIQUID_START_POS,  # sitting on plane (z = height/2)),
         ),
 )
@@ -72,7 +75,7 @@ plane = scene.add_entity(gs.morphs.Plane())
 # )
 
 cup = scene.add_entity(
-    gs.morphs.Mesh(file='cup.obj', pos=CUP_START_POS, scale=0.2, ),
+    gs.morphs.Mesh(file='cup.obj', pos=CUP_START_POS, scale=CUP_SCALE, euler=(90, 0, 0)),
 )
 
 franka = scene.add_entity(
@@ -153,7 +156,7 @@ def side_grasp_quat(approach_dir_world, up_hint_world=np.array([0,0,1]), order="
 ########################## side grasp motion ##########################
 end_effector = franka.get_link('hand')
 
-target_pos = np.array(CUP_START_POS) + np.array([0.0, 0.0, 0.03])
+target_pos = np.array((0.65, 0.00, 0.06)) + np.array([0.0, 0.0, 0.03])
 approach_dir = np.array([0.0, 1.0, 0.0])  # approach from -Y toward +Y
 side_quat = side_grasp_quat(approach_dir, np.array([0,0,1]), order="wxyz")
 
@@ -208,13 +211,16 @@ for _ in range(200):
     
 
 # Rotate
-
+pour_levels = [1.5, 1.625, 1.675]
 joint7_idx = 6   # zero-based index
 for i in range(100):
     if i == 0:
         franka.control_dofs_position(
-            np.array([1.0]),          # target angle in radians
+            np.array([1.625]),          # target angle in radians
             np.array([joint7_idx]),   # which joint to command
         )
     print("control force:", franka.get_dofs_control_force([joint7_idx]))
+    scene.step()
+
+for _ in range(200):
     scene.step()
