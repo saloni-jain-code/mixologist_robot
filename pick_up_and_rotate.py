@@ -2,8 +2,7 @@
 In terminal:
 python -m venv robotics
 source robotics/bin/activate
-pip install torch torchvision 
-pip install genesis-world
+pip install -r requirements.txt
 
 python pick_up_and_rotate.py
 '''
@@ -11,23 +10,37 @@ import numpy as np
 import genesis as gs
 import torch
 import sys
+import matplotlib.pyplot as plt
 
 pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
 print("Pour level (high, medium, or low): ", pour_level)
-pour_levels = {"high":1, "medium": 1.625, "low": 1.675}
+pour_levels = {"high":1.1, "medium": 1.215, "low": 1.22}
+pour_speed = {"high":300, "medium": 250, "low": 200}
+x_offset = {"high": 0.01, "medium": 0.02, "low": 0.04} 
+
+CUP_FILE = 'cup.obj'
+
+# Cup bounds (approximate cylinder bounds)
+CUP_HEIGHT = 0.1
+CUP_RADIUS = 0.03
 
 CUP_START_POS = (0.65, 0.0, 0.12)
-CUP2_START_POS = (0.76, 0.0, 0.12)
-CUP_TEST_START_POS = (0.85, 0.0, 0.12)
 CUP_SCALE = 0.025
-CUP2_SCALE = 0.032
-LIQUID_RADIUS = 0.025
-LIQUID_HEIGHT = 0.1
-LIQUID_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
 
 # Cup2 bounds (approximate cylinder bounds)
 CUP2_HEIGHT = 0.12 
 CUP2_RADIUS = 0.03
+
+CUP2_START_POS = (0.76, 0.0, 0.12)
+CUP2_SCALE = 0.028
+
+CUP_TEST_START_POS = (0.9, 0.0, 0.12)
+
+LIQUID_RADIUS = 0.02
+LIQUID_HEIGHT = 0.2
+LIQUID_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
+
+CAM_POS = (0, 0, 0)
 
 ########################## init ##########################
 gs.init(backend=gs.gpu)
@@ -48,60 +61,48 @@ scene = gs.Scene(
 
 ########################## entities ##########################
 liquid = scene.add_entity(
-        material=gs.materials.PBD.Liquid(
-            sampler="regular",
-            rho=1.0,
-            # density_relaxation=1.0,
-            # viscosity_relaxation=0.0,
-        ),
+        material=gs.materials.PBD.Liquid(),
         morph=gs.morphs.Cylinder(
             height=LIQUID_HEIGHT,        # 12 cm tall
             radius=LIQUID_RADIUS,        # 3 cm radius
             pos=LIQUID_START_POS,  # sitting on plane (z = height/2)),
         ),
+        surface = gs.surfaces.Default(
+            color    = (1.0, 0.4, 0.4),
+            vis_mode = 'particle'
+        )
 )
 
-cam = scene.add_camera(
-    model='pinhole',
-    res=(320, 320),
-    pos=(0.6, -0.3, 0.9),        # put camera above robot
-    lookat=CUP_START_POS,        # look at the cup
-    up=(0,0,1),
-    fov=60,
-    GUI=False,                  # if True: opens a window with the camera view
-    near=0.05,
-    far=5.0,
-)
+# cam = scene.add_camera(
+#     model='pinhole',
+#     res=(320, 320),
+#     pos=CAM_POS,        # put camera above robot
+#     lookat=CUP_START_POS,        # look at the cup
+#     up=(0,0,1),
+#     fov=60,
+#     GUI=False,                  # if True: opens a window with the camera view
+#     near=0.05,
+#     far=5.0,
+# )
 
 plane = scene.add_entity(gs.morphs.Plane())
 
-# cup = scene.add_entity(
-#     gs.morphs.Cylinder(
-#         height=0.12,        # 12 cm tall
-#         radius=0.03,        # 3 cm radius
-#         pos=CUP_START_POS,  # sitting on plane (z = height/2)
-#     )
-# )
-
-# cup = scene.add_entity(
-#     gs.morphs.MJCF(file='object_sim/cup/object.xml', pos=CUP_START_POS, scale=2),
-# )
 
 cup = scene.add_entity(
-    gs.morphs.Mesh(file='cup.obj', pos=CUP_START_POS, scale=CUP_SCALE, euler=(90, 0, 0)),
+    gs.morphs.Mesh(file=CUP_FILE, pos=CUP_START_POS, scale=CUP_SCALE, euler=(90, 0, 0)),
 )
 
 cup2 = scene.add_entity(
-    gs.morphs.Mesh(file='cup.obj', pos=CUP2_START_POS, scale=CUP2_SCALE, euler=(90, 0, 0)),
+    gs.morphs.Mesh(file=CUP_FILE, pos=CUP2_START_POS, scale=CUP2_SCALE, euler=(90, 0, 0)),
 )
 
-cupTest = scene.add_entity(
-    gs.morphs.Cylinder(
-        height=CUP2_HEIGHT,
-        radius=CUP2_RADIUS,
-        pos=CUP_TEST_START_POS,
-    )
-)
+# cupTest = scene.add_entity(
+#     gs.morphs.Cylinder(
+#         height=CUP2_HEIGHT,
+#         radius=CUP2_RADIUS,
+#         pos=CUP_TEST_START_POS,
+#     )
+# )
 
 franka = scene.add_entity(
     gs.morphs.MJCF(file='xml/franka_emika_panda/panda.xml'),
@@ -178,7 +179,7 @@ def side_grasp_quat(approach_dir_world, up_hint_world=np.array([0,0,1]), order="
         w,x,y,z = q_wxyz
         return np.array([x,y,z,w])
 
-def count_particles_in_cup2():
+def count_particles_in_cup(cup, cup_height, cup_radius):
     """
     Count how many liquid particles are inside cup2's cylindrical bounds.
     """
@@ -191,10 +192,10 @@ def count_particles_in_cup2():
         writer.write(f"{p[0]}, {p[1]}, {p[2]}\n")
     writer.close()
     # Get cup2's current position
-    cup2_pos = cup2.get_pos().cpu().numpy()
+    cup_pos = cup.get_pos().cpu().numpy()
     
     # Calculate relative positions (x, y, z) from cup2 center
-    rel_pos = particle_pos - cup2_pos
+    rel_pos = particle_pos - cup_pos
     
     # Check cylinder bounds:
     # 1. Radial distance from cup2's center (x-y plane)
@@ -202,13 +203,13 @@ def count_particles_in_cup2():
     
     # 2. Height within cup (z axis) - cup opening at top
     # Assuming cup is upright with opening at +z direction
-    z_min = -CUP2_HEIGHT / 2  # bottom of cup
-    z_max = CUP2_HEIGHT / 2   # top of cup (opening)
+    z_min = -cup_height / 2  # bottom of cup
+    z_max = cup_height / 2   # top of cup (opening)
     
     # Particles are inside if:
     # - radial distance < radius
     # - z is between bottom and top
-    inside_radially = radial_dist < CUP2_RADIUS
+    inside_radially = radial_dist < cup_radius
     inside_vertically = (rel_pos[:, 2] > z_min) & (rel_pos[:, 2] < z_max)
     
     particles_inside = np.sum(inside_radially & inside_vertically)
@@ -232,10 +233,11 @@ close_force = -1.0
 pregrasp_pos = target_pos - approach_dir * pregrasp_offset
 grasp_pos    = target_pos.copy() + gripper_offset
 
-# ------------- move to pregrasp ----------------
-in_cup, total = count_particles_in_cup2()
-print(f"\n=== Initial State ===")
-print(f"Total particles in cup2: {in_cup}/{total} ({100*in_cup/total:.1f}%)")
+# ------------- get camera images ----------------
+# rgb_arr, depth_arr, seg_arr, normal_arr = cam.render()
+# plt.imshow(rgb_arr)
+# plt.axis('off')
+# plt.show()
 
 q_pre = franka.inverse_kinematics(
     link=end_effector, 
@@ -273,19 +275,47 @@ q_lift = franka.inverse_kinematics(
 )
 franka.control_dofs_position(q_lift[:-2], motors_dof)
 
-for _ in range(200):
+for _ in range(100):
     scene.step()
-    
 
-# Rotate
-joint7_idx = 6   # zero-based index
-for i in range(100):
-    if i == 0:
-        franka.control_dofs_position(
-            np.array([pour_levels[pour_level]]),          # target angle in radians
-            np.array([joint7_idx]),   # which joint to command
+# ------------- move closer for medium/low pour levels ----------------
+if x_offset[pour_level] > 0:  # Only move if offset is greater than 0
+    current_pos = end_effector.get_pos().cpu().numpy()
+    target_pos_closer = current_pos.copy()
+    target_pos_closer[0] += x_offset[pour_level]  # Move in +x direction
+    
+    # Smoothly move to the new position
+    n_move_steps = 50
+    for i in range(n_move_steps):
+        alpha = i / n_move_steps
+        intermediate_pos = (1 - alpha) * current_pos + alpha * target_pos_closer
+        
+        q_move = franka.inverse_kinematics(
+            link=end_effector,
+            pos=intermediate_pos,
+            quat=side_quat,
         )
-    print("control force:", franka.get_dofs_control_force([joint7_idx]))
+        franka.control_dofs_position(q_move[:-2], motors_dof)
+        scene.step()
+    
+    for _ in range(30):
+        scene.step()
+
+# ------------- rotate to pour ----------------
+joint7_idx = 6
+current_angle = franka.get_dofs_position([joint7_idx]).cpu().numpy()[0]
+target_angle = pour_levels[pour_level]
+n_steps = pour_speed[pour_level]  # More steps = slower rotation
+
+for i in range(n_steps):
+    # Smoothly interpolate from current to target angle
+    alpha = i / n_steps
+    intermediate_angle = (1 - alpha) * current_angle + alpha * target_angle
+    
+    franka.control_dofs_position(
+        np.array([intermediate_angle]),
+        np.array([joint7_idx]),
+    )
     scene.step()
 
 for _ in range(50):
@@ -300,9 +330,13 @@ for i in range(100):
     print("control force:", franka.get_dofs_control_force([joint7_idx]))
     scene.step()
 
-for _ in range(200):
+for _ in range(100):
     scene.step()
 
-in_cup, total = count_particles_in_cup2()
+in_cup, total = count_particles_in_cup(cup, CUP_HEIGHT, CUP_RADIUS)
+in_cup2, total = count_particles_in_cup(cup2, CUP2_HEIGHT, CUP2_RADIUS)
+
 print(f"\n=== Final Result ===")
-print(f"Total particles in cup2: {in_cup}/{total} ({100*in_cup/total:.1f}%)")
+print(f"Total particles in cup: {in_cup}/{total} ({100*in_cup/total:.1f}%)")
+print(f"Total particles in cup2: {in_cup2}/{total} ({100*in_cup2/total:.1f}%)")
+print(f"Percentage spilled: {100*(1 - (in_cup + in_cup2) / total):.1f}%")
