@@ -40,7 +40,8 @@ CUP_TEST_START_POS = (0.9, 0.0, 0.12)
 
 LIQUID_RADIUS = 0.02
 LIQUID_HEIGHT = 0.2
-LIQUID_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
+LIQUID1_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
+LIQUID2_START_POS = (CUP3_START_POS[0], CUP3_START_POS[1], CUP3_START_POS[2] + 0.3)
 
 CAM_POS = (0, 0, 0)
 
@@ -69,7 +70,7 @@ liquid = scene.add_entity(
         morph=gs.morphs.Cylinder(
             height=LIQUID_HEIGHT,        # 12 cm tall
             radius=LIQUID_RADIUS,        # 3 cm radius
-            pos=LIQUID_START_POS,  # sitting on plane (z = height/2)),
+            pos=LIQUID1_START_POS,  # sitting on plane (z = height/2)),
         ),
         surface = gs.surfaces.Default(
             color    = (1.0, 0.4, 0.4),
@@ -77,6 +78,18 @@ liquid = scene.add_entity(
         )
 )
 
+liquid2 = scene.add_entity(
+        material=gs.materials.PBD.Liquid(),
+        morph=gs.morphs.Cylinder(
+            height=LIQUID_HEIGHT,        # 12 cm tall
+            radius=LIQUID_RADIUS,        # 3 cm radius
+            pos=LIQUID2_START_POS,  # sitting on plane (z = height/2)),
+        ),
+        surface = gs.surfaces.Default(
+            color    = (0.3, 0.3, 1.0),
+            vis_mode = 'particle'
+        )
+)
 # cam = scene.add_camera(
 #     model='pinhole',
 #     res=(320, 320),
@@ -286,7 +299,7 @@ def grasp(franka):
     for _ in range(70): scene.step() # before it was 140
 
 def ungrasp(franka):
-    franka.control_dofs_force(np.array([-100, -100]), fingers_dof)
+    franka.control_dofs_force(np.array([-close_force, -close_force]), fingers_dof)
     for _ in range(140): scene.step() # before it was 140
 
 # ------------- lift ----------------
@@ -370,15 +383,14 @@ def rotate(franka, pour_level):
     for _ in range(40):
         scene.step()
 
-
-
 approach(franka, CUP_START_POS)
 grasp(franka)
 lift(franka, CUP_START_POS, lift_height)
 move_horizontally(franka, x_offset[pour_level]) # x_offset should depend on pour level + what cup it is 
 rotate(franka, pour_level)
 move_horizontally(franka, -x_offset[pour_level])
-# lift(franka, cup.get_pos().cpu().numpy(), -lift_height)
+lift(franka, cup.get_pos().cpu().numpy(), 0.08)
+ungrasp(franka)
 
 # approach(franka, CUP3_START_POS)
 # grasp(franka)
@@ -386,7 +398,7 @@ move_horizontally(franka, -x_offset[pour_level])
 # move_horizontally(franka, x_offset[pour_level]) # x_offset should depend on pour level + what cup it is 
 # rotate(franka, pour_level)
 # move_horizontally(franka, -x_offset[pour_level])
-# lift(franka, cup3.get_pos().cpu().numpy(), -lift_height)
+# lift(franka, cup3.get_pos().cpu().numpy(), 0.08)
 
 in_cup, total = count_particles_in_cup(cup, CUP_HEIGHT, CUP_RADIUS)
 in_cup2, total = count_particles_in_cup(cup2, CUP2_HEIGHT, CUP2_RADIUS)
