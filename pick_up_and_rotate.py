@@ -40,8 +40,11 @@ CUP_TEST_START_POS = (0.9, 0.0, 0.12)
 
 LIQUID_RADIUS = 0.02
 LIQUID_HEIGHT = 0.2
+ROD_HEIGHT = 1
+ROD_RADIUS = 0.005
 LIQUID1_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
 LIQUID2_START_POS = (CUP3_START_POS[0], CUP3_START_POS[1], CUP3_START_POS[2] + 0.3)
+ROD_START_POS = (CUP_START_POS[0] + 5, CUP_START_POS[1], CUP_START_POS[2])
 
 CAM_POS = (0, 0, 0)
 
@@ -101,6 +104,14 @@ liquid2 = scene.add_entity(
 #     near=0.05,
 #     far=5.0,
 # )
+
+rod = scene.add_entity(
+        morph=gs.morphs.Cylinder(
+            height=ROD_HEIGHT,
+            radius=ROD_RADIUS,
+            pos=LIQUID2_START_POS,  # same height as the cups, but displaced to the right
+        )
+)
 
 plane = scene.add_entity(gs.morphs.Plane())
 
@@ -393,6 +404,43 @@ def rotate(franka, pour_level):
     for _ in range(40):
         scene.step()
 
+# ------------- move circularly to stir ----------------
+def stir(franka):
+    # lower the rod into the liquid
+    end_effector = franka.get_link('hand')
+    current_pos = end_effector.get_pos().cpu().numpy()
+    target_pos_closer = current_pos.copy()
+    target_pos_closer[direction] += dist  # move dist in +direction
+    n_move_steps = 50
+
+    center = np.array([0.5, 0.0, 0.4])   # choose a center in world coordinates
+    radius = 0.1                          # circle radius
+    start_angle = 0.0
+    end_angle   = 2 * np.pi               # full circle; change for arc
+
+
+    for i in range(n_move_steps):
+        theta = start_angle + alpha * (end_angle - start_angle)
+    
+        # Circle in XY plane around `center`, constant Z
+        intermediate_pos = np.array([
+            center[0] + radius * np.cos(theta),
+            center[1] + radius * np.sin(theta),
+            center[2],                     # keep height fixed
+        ])
+
+        q_move = franka.inverse_kinematics(
+            link=end_effector,
+            pos=intermediate_pos,
+            quat=side_quat,
+        )
+
+        franka.control_dofs_position(q_move[:-2], motors_dof)
+        scene.step()
+    
+    for _ in range(30):
+        scene.step()
+
 approach(franka, CUP_START_POS)
 grasp(franka)
 lift(franka, CUP_START_POS, lift_height)
@@ -402,6 +450,12 @@ move_dist(franka, 0, -x_offset[pour_level])
 lift(franka, cup.get_pos().cpu().numpy(), 0.08)
 ungrasp(franka)
 move_dist(franka, 1, 0.05)
+approach(franka, ROD_START_POS)
+grasp(franka)
+lift(franka, ROD_START_POS, lift_height)
+move_dist(franka, 0, x_offset[pour_level])
+stir(franka)
+
 
 # approach(franka, CUP3_START_POS)
 # grasp(franka)
