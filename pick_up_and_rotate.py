@@ -251,7 +251,7 @@ pregrasp_offset  = -0.14
 gripper_offset = np.array([0.0, 0.10, 0.0]) # offset from center of end-effector to center of grip
 retreat_distance = 0 # 0.16
 open_width  = 0.06
-close_force = -0.2 # was -1.0 before
+close_force = -0.2
 
 pregrasp_pos = target_pos - approach_dir * pregrasp_offset
 grasp_pos    = target_pos.copy() + gripper_offset
@@ -304,15 +304,9 @@ def ungrasp(franka):
     for i in range(n_steps):
         if i == 0:
             franka.control_dofs_position([0.1, 0.1], fingers_dof)
-        # if i == (n_steps // 4):
-        #     franka.control_dofs_position([0.2, 0.2], fingers_dof)
         if i == (n_steps // 2):
             franka.control_dofs_position([0.2, 0.2], fingers_dof)
-        # if i == (3*n_steps // 4):
-        #     franka.control_dofs_position([0.4, 0.4], fingers_dof)
         scene.step()
-    # franka.control_dofs_position([0.5, 0.5], fingers_dof)
-    # franka.control_dofs_force(np.array([-close_force, -close_force]), fingers_dof)
     for _ in range(70): scene.step() # before it was 140
 
 # ------------- lift ----------------
@@ -332,8 +326,6 @@ def lift(franka, cup_pos, lift_height):
             pos=intermediate_pos,
             quat=side_quat,
         )
-        # if intermediate_pos[2] < 0.1:
-        #     q_lift[-2:] = open_width
         franka.control_dofs_position(q_lift[:-2], motors_dof)
         scene.step()
     for _ in range(100):
@@ -342,7 +334,7 @@ def lift(franka, cup_pos, lift_height):
 def move_dist(franka, direction, dist):
     '''
     direction = 0, 1, 2 to represent x, y, z respectively
-    
+
     dist is the distance 
     '''
     end_effector = franka.get_link('hand')
@@ -405,9 +397,7 @@ approach(franka, CUP_START_POS)
 grasp(franka)
 lift(franka, CUP_START_POS, lift_height)
 move_dist(franka, 0, x_offset[pour_level])
-# move_horizontally(franka, x_offset[pour_level]) # x_offset should depend on pour level + what cup it is 
 rotate(franka, pour_level)
-# move_horizontally(franka, -x_offset[pour_level])
 move_dist(franka, 0, -x_offset[pour_level])
 lift(franka, cup.get_pos().cpu().numpy(), 0.08)
 ungrasp(franka)
