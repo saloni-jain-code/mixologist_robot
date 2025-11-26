@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 
 pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
 print("Pour level (high, medium, or low): ", pour_level)
-pour_levels = {"high":1.1, "medium": 1.205, "low": 1.22}
-pour_speed = {"high":300, "medium": 250, "low": 200}
-x_offset = {"high": 0.01, "medium": 0.03, "low": 0.04} 
+pour_levels = {"high":1, "medium": 1.09, "low": 1.105}
+pour_speed = {"high":300, "medium": 225, "low": 200}
+x_offset = {"high": 0.02, "medium": 0.035, "low": 0.04} 
 
 CUP_FILE = 'cup.obj'
 
@@ -251,7 +251,7 @@ pregrasp_offset  = -0.14
 gripper_offset = np.array([0.0, 0.10, 0.0]) # offset from center of end-effector to center of grip
 retreat_distance = 0 # 0.16
 open_width  = 0.06
-close_force = -1.0
+close_force = -0.2 # was -1.0 before
 
 pregrasp_pos = target_pos - approach_dir * pregrasp_offset
 grasp_pos    = target_pos.copy() + gripper_offset
@@ -299,8 +299,21 @@ def grasp(franka):
     for _ in range(70): scene.step() # before it was 140
 
 def ungrasp(franka):
-    franka.control_dofs_force(np.array([-close_force, -close_force]), fingers_dof)
-    for _ in range(140): scene.step() # before it was 140
+    n_steps = 40
+    
+    for i in range(n_steps):
+        if i == 0:
+            franka.control_dofs_position([0.1, 0.1], fingers_dof)
+        # if i == (n_steps // 4):
+        #     franka.control_dofs_position([0.2, 0.2], fingers_dof)
+        if i == (n_steps // 2):
+            franka.control_dofs_position([0.2, 0.2], fingers_dof)
+        # if i == (3*n_steps // 4):
+        #     franka.control_dofs_position([0.4, 0.4], fingers_dof)
+        scene.step()
+    # franka.control_dofs_position([0.5, 0.5], fingers_dof)
+    # franka.control_dofs_force(np.array([-close_force, -close_force]), fingers_dof)
+    for _ in range(70): scene.step() # before it was 140
 
 # ------------- lift ----------------
 def lift(franka, cup_pos, lift_height):
@@ -319,21 +332,25 @@ def lift(franka, cup_pos, lift_height):
             pos=intermediate_pos,
             quat=side_quat,
         )
+        # if intermediate_pos[2] < 0.1:
+        #     q_lift[-2:] = open_width
         franka.control_dofs_position(q_lift[:-2], motors_dof)
         scene.step()
-    if lift_height < 0:
-        ungrasp(franka)
     for _ in range(100):
         scene.step()
 
-def move_horizontally(franka, x_dst):
+def move_dist(franka, direction, dist):
+    '''
+    direction = 0, 1, 2 to represent x, y, z respectively
+    
+    dist is the distance 
+    '''
     end_effector = franka.get_link('hand')
     current_pos = end_effector.get_pos().cpu().numpy()
     target_pos_closer = current_pos.copy()
-    target_pos_closer[0] += x_dst  # Move in +x direction
-    
-    # Smoothly move to the new position
+    target_pos_closer[direction] += dist  # move dist in +direction
     n_move_steps = 50
+
     for i in range(n_move_steps):
         alpha = i / n_move_steps
         intermediate_pos = (1 - alpha) * current_pos + alpha * target_pos_closer
@@ -343,6 +360,7 @@ def move_horizontally(franka, x_dst):
             pos=intermediate_pos,
             quat=side_quat,
         )
+        
         franka.control_dofs_position(q_move[:-2], motors_dof)
         scene.step()
     
@@ -386,11 +404,14 @@ def rotate(franka, pour_level):
 approach(franka, CUP_START_POS)
 grasp(franka)
 lift(franka, CUP_START_POS, lift_height)
-move_horizontally(franka, x_offset[pour_level]) # x_offset should depend on pour level + what cup it is 
+move_dist(franka, 0, x_offset[pour_level])
+# move_horizontally(franka, x_offset[pour_level]) # x_offset should depend on pour level + what cup it is 
 rotate(franka, pour_level)
-move_horizontally(franka, -x_offset[pour_level])
+# move_horizontally(franka, -x_offset[pour_level])
+move_dist(franka, 0, -x_offset[pour_level])
 lift(franka, cup.get_pos().cpu().numpy(), 0.08)
 ungrasp(franka)
+move_dist(franka, 1, 0.05)
 
 # approach(franka, CUP3_START_POS)
 # grasp(franka)
