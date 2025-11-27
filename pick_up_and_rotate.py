@@ -40,11 +40,11 @@ CUP_TEST_START_POS = (0.9, 0.0, 0.12)
 
 LIQUID_RADIUS = 0.02
 LIQUID_HEIGHT = 0.2
-ROD_HEIGHT = 1
+ROD_HEIGHT = 0.2
 ROD_RADIUS = 0.005
 LIQUID1_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
 LIQUID2_START_POS = (CUP3_START_POS[0], CUP3_START_POS[1], CUP3_START_POS[2] + 0.3)
-ROD_START_POS = (CUP_START_POS[0] + 5, CUP_START_POS[1], CUP_START_POS[2])
+ROD_START_POS = (CUP_START_POS[0] + 0.2, CUP_START_POS[1], CUP_START_POS[2])
 
 CAM_POS = (0, 0, 0)
 
@@ -109,7 +109,7 @@ rod = scene.add_entity(
         morph=gs.morphs.Cylinder(
             height=ROD_HEIGHT,
             radius=ROD_RADIUS,
-            pos=LIQUID2_START_POS,  # same height as the cups, but displaced to the right
+            pos=ROD_START_POS,  # same height as the cups, but displaced to the right
         )
 )
 
