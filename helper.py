@@ -1,5 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import settings
+import cv2
 
 motors_dof  = np.arange(7)
 fingers_dof = np.arange(7, 9)
@@ -73,7 +75,7 @@ grasp_pos    = target_pos.copy() + gripper_offset
 ########################## helpers ##########################
 def approach(scene, franka, cup_pos):
     # -- preapproach
-    target_pos = np.array(cup_pos) - np.array([0.0, 0.0, 0.03])
+    target_pos = np.array(cup_pos) + np.array([0.0, 0.0, 0.09])
     pregrasp_pos = target_pos - approach_dir * pregrasp_offset
     grasp_pos    = target_pos.copy() + gripper_offset
     end_effector = franka.get_link('hand')
@@ -101,10 +103,45 @@ def approach(scene, franka, cup_pos):
     for _ in range(20): scene.step()
 
 # ------------- get camera images ----------------
-# rgb_arr, depth_arr, seg_arr, normal_arr = cam.render()
-# plt.imshow(rgb_arr)
-# plt.axis('off')
-# plt.show()
+def get_camera_render(cam):
+    rgb_arr, depth_arr, seg_arr, normal_arr = cam.render()
+    gray = cv2.cvtColor(rgb_arr, cv2.COLOR_BGR2GRAY)
+    plt.imshow(gray)
+    plt.show()
+    _, thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY) #try wo inv.
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    #---------
+    # Make a copy of the original image to draw on
+    img_contours = rgb_arr.copy()  # or gray.copy() if you want grayscale background
+
+    # Draw all contours in green with thickness 2
+    cv2.drawContours(img_contours, contours, -1, (0, 255, 0), 2)
+
+    # If using matplotlib, convert BGR to RGB
+    img_contours_rgb = cv2.cvtColor(img_contours, cv2.COLOR_BGR2RGB)
+
+    # Show the image with contours
+    plt.figure(figsize=(8,6))
+    plt.imshow(img_contours_rgb)
+    plt.axis('off')
+    plt.show() 
+    #----------
+
+    # cup_centers_px = []
+    # for cnt in contours:
+    #     M = cv2.moments(cnt)
+    #     if M["m00"] > 0:
+    #         cx = int(M["m10"] / M["m00"])
+    #         cy = int(M["m01"] / M["m00"])
+    #         cup_centers_px.append((cx, cy))
+    # print("CUP CENTERS PX:", cup_centers_px)
+
+    # plt.imshow(rgb_arr)
+    # plt.axis('off')
+    # plt.show()
+    # pc, mask_arr = cam.render_pointcloud()
+    
 
 
 # ------------- grasp ----------------
@@ -127,7 +164,7 @@ def ungrasp(scene, franka):
 def lift(scene, franka, cup_pos, lift_height):
     end_effector = franka.get_link('hand')
     
-    target_pos = np.array(cup_pos) - np.array([0.0, 0.0, 0.03])
+    target_pos = np.array(cup_pos) + np.array([0.0, 0.0, 0.09])
     current_pos = end_effector.get_pos().cpu().numpy()
     grasp_pos    = target_pos.copy() + gripper_offset
     new_grasp_pos = np.array([grasp_pos[0], grasp_pos[1], lift_height])

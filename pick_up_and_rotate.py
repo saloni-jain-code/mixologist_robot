@@ -12,7 +12,7 @@ import torch
 import sys
 import matplotlib.pyplot as plt
 import settings as s
-from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir)
+from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, get_camera_render)
 
 def main(): 
     pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
@@ -69,7 +69,12 @@ def main():
             )
     )
 
-    plane = scene.add_entity(gs.morphs.Plane())
+    plane = scene.add_entity(
+        morph=gs.morphs.Plane(),
+        surface = gs.surfaces.Plastic(
+            color = (0, 0, 0)
+        )                 
+    )
 
     cup = scene.add_entity(
         gs.morphs.Mesh(file=s.CUP_FILE, pos=s.CUP_START_POS, scale=s.CUP_SCALE, euler=(90, 0, 0)),
@@ -87,18 +92,19 @@ def main():
         gs.morphs.MJCF(file='xml/franka_emika_panda/panda.xml'),
     )
 
-    # cam = scene.add_camera(
-    #     model='pinhole',
-    #     res=(320, 320),
-    #     pos=CAM_POS,        # put camera above robot
-    #     lookat=CUP_START_POS,        # look at the cup
-    #     up=(0,0,1),
-    #     fov=60,
-    #     GUI=False,                  # if True: opens a window with the camera view
-    #     near=0.05,
-    #     far=5.0,
-    # )
+    cam = scene.add_camera(
+        model='pinhole',
+        res=(320, 320),
+        pos=s.CAM_POS,        # put camera above robot
+        lookat=s.CUP_START_POS,        # look at the cup
+        up=(0,0,1),
+        fov=60,
+        GUI=False,                  # if True: opens a window with the camera view
+        near=0.05,
+        far=5.0,
+    )
 
+    # print("CAMERA EXTRINSICS:", cam.extrinsics)
     scene.build()
 
     # --- control gains ----------------------------------------------------------
@@ -110,9 +116,12 @@ def main():
     )
 
     ########################## EXECUTION PIPELINE ##########################
-    approach(scene, franka, s.CUP_START_POS)
+    for i in range(50):
+        scene.step()
+    get_camera_render(cam)
+    approach(scene, franka, cup.get_pos().cpu().numpy())
     grasp(scene, franka)
-    lift(scene, franka, s.CUP_START_POS, s.LIFT_HEIGHT)
+    lift(scene, franka, cup.get_pos().cpu().numpy(), s.LIFT_HEIGHT)
     move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
     rotate(scene, franka, pour_level)
     move_dist(scene, franka, 0, -1.0 * s.X_OFFSET[pour_level])
