@@ -1,0 +1,30 @@
+POUR_LEVELS = {"high":1, "medium": 1.09, "low": 1.105}
+POUR_SPEED = {"high":300, "medium": 225, "low": 200}
+X_OFFSET = {"high": 0.02, "medium": 0.035, "low": 0.04} 
+
+CUP_FILE = 'files/cup.obj'
+CUP_START_POS = (0.65, 0.0, 0.12)
+
+# Cup bounds (approximate cylinder bounds)
+CUP_HEIGHT = 0.1
+CUP_RADIUS = 0.03
+CUP_SCALE = 0.025
+
+# Cup2 bounds (approximate cylinder bounds)
+CUP2_HEIGHT = 0.12 
+CUP2_RADIUS = 0.03
+CUP2_START_POS = (0.76, 0.0, 0.12)
+CUP2_SCALE = 0.028
+
+CUP3_START_POS = (0.55, 0.0, 0.12)
+
+LIQUID_RADIUS = 0.02
+LIQUID_HEIGHT = 0.2
+ROD_HEIGHT = 0.2
+ROD_RADIUS = 0.005
+LIQUID1_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
+LIQUID2_START_POS = (CUP3_START_POS[0], CUP3_START_POS[1], CUP3_START_POS[2] + 0.3)
+ROD_START_POS = (CUP_START_POS[0] - 0.25, CUP_START_POS[1], CUP_START_POS[2])
+LIFT_HEIGHT = 0.28
+
+CAM_POS = (0, 0, 0)
