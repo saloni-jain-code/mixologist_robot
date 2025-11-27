@@ -251,10 +251,6 @@ def count_particles_in_cup(cup, liquid, cup_height, cup_radius):
     particle_pos = liquid.get_particles_pos().cpu().numpy()
     print("PARTICLE POS SHAPE:", particle_pos.shape)
     print("PARTICLE POS:", particle_pos)
-    writer = open("files/particle_positions.txt", "w")
-    for p in particle_pos:
-        writer.write(f"{p[0]}, {p[1]}, {p[2]}\n")
-    writer.close()
     # Get cup2's current position
     cup_pos = cup.get_pos().cpu().numpy()
     
