@@ -12,7 +12,7 @@ import torch
 import sys
 import matplotlib.pyplot as plt
 import settings as s
-from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate)
+from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir)
 
 def main(): 
     pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
@@ -122,11 +122,11 @@ def main():
     move_dist(scene, franka, 1, 0.1)
     move_dist(scene, franka, 0, -0.2)
 
-    # approach(scene, franka, ROD_START_POS)
-    # grasp(franka)
-    # lift(franka, ROD_START_POS, LIFT_HEIGHT)
-    # move_dist(franka, 0, x_offset[pour_level])
-    # stir(franka)
+    approach(scene, franka, s.ROD_START_POS)
+    grasp(scene, franka)
+    lift(scene, franka, s.ROD_START_POS, s.LIFT_HEIGHT)
+    move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
+    stir(scene, franka)
 
     # approach(franka, CUP3_START_POS)
     # grasp(franka)

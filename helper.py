@@ -247,13 +247,10 @@ def count_particles_in_cup(cup, liquid, cup_height, cup_radius):
 def stir(scene, franka):
     # lower the rod into the liquid
     end_effector = franka.get_link('hand')
-    current_pos = end_effector.get_pos().cpu().numpy()
-    target_pos_closer = current_pos.copy()
-    target_pos_closer[direction] += dist  # move dist in +direction
     n_move_steps = 50
 
     center = np.array([0.5, 0.0, 0.4])   # choose a center in world coordinates
-    radius = 0.1                          # circle radius
+    radius = 0.05                         # circle radius
     start_angle = 0.0
     end_angle   = 2 * np.pi               # full circle; change for arc
 
