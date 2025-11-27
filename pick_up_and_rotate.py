@@ -44,7 +44,7 @@ ROD_HEIGHT = 0.2
 ROD_RADIUS = 0.005
 LIQUID1_START_POS = (CUP_START_POS[0], CUP_START_POS[1], CUP_START_POS[2] + 0.3)
 LIQUID2_START_POS = (CUP3_START_POS[0], CUP3_START_POS[1], CUP3_START_POS[2] + 0.3)
-ROD_START_POS = (CUP_START_POS[0] + 0.2, CUP_START_POS[1], CUP_START_POS[2])
+ROD_START_POS = (CUP_START_POS[0] - 0.25, CUP_START_POS[1], CUP_START_POS[2])
 
 CAM_POS = (0, 0, 0)
 
@@ -278,6 +278,7 @@ def approach(franka, cup_pos):
     # -- preapproach
     target_pos = np.array(cup_pos) - np.array([0.0, 0.0, 0.03])
     pregrasp_pos = target_pos - approach_dir * pregrasp_offset
+    grasp_pos    = target_pos.copy() + gripper_offset
     end_effector = franka.get_link('hand')
     q_pre = franka.inverse_kinematics(
             link=end_effector, 
@@ -408,9 +409,6 @@ def rotate(franka, pour_level):
 def stir(franka):
     # lower the rod into the liquid
     end_effector = franka.get_link('hand')
-    current_pos = end_effector.get_pos().cpu().numpy()
-    target_pos_closer = current_pos.copy()
-    target_pos_closer[direction] += dist  # move dist in +direction
     n_move_steps = 50
 
     center = np.array([0.5, 0.0, 0.4])   # choose a center in world coordinates
@@ -420,6 +418,7 @@ def stir(franka):
 
 
     for i in range(n_move_steps):
+        alpha = i / n_move_steps
         theta = start_angle + alpha * (end_angle - start_angle)
     
         # Circle in XY plane around `center`, constant Z
@@ -449,7 +448,9 @@ rotate(franka, pour_level)
 move_dist(franka, 0, -x_offset[pour_level])
 lift(franka, cup.get_pos().cpu().numpy(), 0.08)
 ungrasp(franka)
-move_dist(franka, 1, 0.05)
+move_dist(franka, 1, 0.1)
+move_dist(franka, 0, -0.2)
+
 approach(franka, ROD_START_POS)
 grasp(franka)
 lift(franka, ROD_START_POS, lift_height)
