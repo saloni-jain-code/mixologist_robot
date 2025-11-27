@@ -75,6 +75,7 @@ def approach(scene, franka, cup_pos):
     # -- preapproach
     target_pos = np.array(cup_pos) - np.array([0.0, 0.0, 0.03])
     pregrasp_pos = target_pos - approach_dir * pregrasp_offset
+    grasp_pos    = target_pos.copy() + gripper_offset
     end_effector = franka.get_link('hand')
     q_pre = franka.inverse_kinematics(
             link=end_effector, 
@@ -258,6 +259,7 @@ def stir(scene, franka):
 
 
     for i in range(n_move_steps):
+        alpha = i / n_move_steps
         theta = start_angle + alpha * (end_angle - start_angle)
     
         # Circle in XY plane around `center`, constant Z
