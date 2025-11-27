@@ -119,6 +119,8 @@ def main():
     lift(scene, franka, cup.get_pos().cpu().numpy(), 0.08)
     ungrasp(scene, franka)
     move_dist(scene, franka, 1, 0.05)
+    move_dist(scene, franka, 1, 0.1)
+    move_dist(scene, franka, 0, -0.2)
 
     # approach(scene, franka, ROD_START_POS)
     # grasp(franka)
