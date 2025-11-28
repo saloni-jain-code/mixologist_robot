@@ -12,7 +12,7 @@ import torch
 import sys
 import matplotlib.pyplot as plt
 import settings as s
-from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, get_camera_render, look_at_transform)
+from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, get_camera_render, look_at_transform, get_cup_world_coordinates)
 
 def main(): 
     pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
@@ -104,12 +104,14 @@ def main():
         far=5.0,
     )
     K = cam.intrinsics
-    T_cam_to_world = look_at_transform(
+    print("INTRINSIC MATRIX", K)
+    extrinsic_matrix = look_at_transform(
         pos=np.array(s.CAM_POS),
         lookat=np.array(s.CUP_START_POS),
         up=np.array([0,0,1])
-    ) # extrinsics matrix
-    print("TRANSFORMATION MATRIX", T_cam_to_world)
+    ) # extrinsics matrix, T_cam_to_world
+    print("TRANSFORMATION MATRIX", extrinsic_matrix)
+
 
     scene.build()
 
@@ -124,8 +126,10 @@ def main():
     ########################## EXECUTION PIPELINE ##########################
     for i in range(50):
         scene.step()
-    get_camera_render(cam)
-    approach(scene, franka, cup.get_pos().cpu().numpy())
+    image_x, image_y, depth = get_camera_render(cam)
+    cup_world_coordinates = get_cup_world_coordinates(K, extrinsic_matrix, image_x, image_y, depth)
+    print("CUP WORLD COORIDNATES", cup_world_coordinates)
+    approach(scene, franka, cup_world_coordinates)
     grasp(scene, franka)
     lift(scene, franka, cup.get_pos().cpu().numpy(), s.LIFT_HEIGHT)
     move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
