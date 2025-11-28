@@ -12,7 +12,7 @@ import torch
 import sys
 import matplotlib.pyplot as plt
 import settings as s
-from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, get_camera_render)
+from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, get_camera_render, look_at_transform)
 
 def main(): 
     pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
@@ -103,8 +103,14 @@ def main():
         near=0.05,
         far=5.0,
     )
+    K = cam.intrinsics
+    T_cam_to_world = look_at_transform(
+        pos=np.array(s.CAM_POS),
+        lookat=np.array(s.CUP_START_POS),
+        up=np.array([0,0,1])
+    ) # extrinsics matrix
+    print("TRANSFORMATION MATRIX", T_cam_to_world)
 
-    # print("CAMERA EXTRINSICS:", cam.extrinsics)
     scene.build()
 
     # --- control gains ----------------------------------------------------------
