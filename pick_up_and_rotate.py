@@ -70,7 +70,7 @@ def main():
         RIGHT_LIQUID_COLOR = (0.3, 0.3, 1.0)
 
     left_cup = scene.add_entity(
-        gs.morphs.Mesh(file=COLOR_CUP_FILES[RAND], pos=LEFT_CUP_START_POS, scale=s.CUP_SCALE, euler=(90, 0, 0)),
+        gs.morphs.Mesh(file=COLOR_CUP_FILES[RAND], pos=s.LEFT_CUP_START_POS, scale=s.CUP_SCALE, euler=(90, 0, 0)),
     )
     left_liquid = scene.add_entity(
         material=gs.materials.PBD.Liquid(),
@@ -86,7 +86,7 @@ def main():
     )
 
     right_cup = scene.add_entity(
-        gs.morphs.Mesh(file=COLOR_CUP_FILES[RAND ^ 1], pos=RIGHT_CUP_START_POS, scale=s.CUP_SCALE, euler=(90, 0, 0)),
+        gs.morphs.Mesh(file=COLOR_CUP_FILES[RAND ^ 1], pos=s.RIGHT_CUP_START_POS, scale=s.CUP_SCALE, euler=(90, 0, 0)),
     )
 
     right_liquid = scene.add_entity(

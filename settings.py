@@ -6,7 +6,7 @@ BLUE_CUP_FILE = 'files/blue_cup.glb'
 RED_CUP_FILE = 'files/red_cup.glb'
 WHITE_CUP_FILE = 'files/cup.obj'
 
-TARGET_CUP_START_POS = (0.65, 0.0, 0.0)
+TARGET_CUP_START_POS = (0.55, 0.0, 0.0)
 TARGET_CUP_HEIGHT = 0.12 
 TARGET_CUP_RADIUS = 0.03
 TARGET_CUP_SCALE = 0.028
