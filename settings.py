@@ -2,7 +2,10 @@ POUR_LEVELS = {"high":1, "medium": 1.09, "low": 1.105}
 POUR_SPEED = {"high":300, "medium": 225, "low": 200}
 X_OFFSET = {"high": 0.02, "medium": 0.035, "low": 0.04} 
 
-CUP_FILE = 'files/cup.obj'
+BLUE_CUP_FILE = 'files/blue_cup.glb'
+RED_CUP_FILE = 'files/red_cup.glb'
+WHITE_CUP_FILE = 'files/cup.obj'
+
 TARGET_CUP_START_POS = (0.65, 0.0, 0.0)
 TARGET_CUP_HEIGHT = 0.12 
 TARGET_CUP_RADIUS = 0.03
