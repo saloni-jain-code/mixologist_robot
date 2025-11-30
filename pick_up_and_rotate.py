@@ -12,6 +12,7 @@ import torch
 import sys
 import matplotlib.pyplot as plt
 import settings as s
+import random
 from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, pixel_to_world, get_cup_centers)
 
 def main(): 
@@ -51,7 +52,7 @@ def main():
     )
 
     target_cup = scene.add_entity(
-        gs.morphs.Mesh(file=s.CUP_FILE, pos=s.TARGET_CUP_START_POS, scale=s.TARGET_CUP_SCALE, euler=(90, 0, 0)),
+        gs.morphs.Mesh(file=s.WHITE_CUP_FILE, pos=s.TARGET_CUP_START_POS, scale=s.TARGET_CUP_SCALE, euler=(90, 0, 0)),
     )
 
     LEFT_CUP_START_POS = (0.5, 0.0, 0.0)
@@ -59,9 +60,17 @@ def main():
     # replace with random positions once get_cup_centers is implemented
     # LEFT_CUP_START_POS = (np.random.uniform(0.4, 0.6), 0.0, 0.0)
     # RIGHT_CUP_START_POS = (np.random.uniform(0.7, 0.9), 0.0, 0.0)
+    COLOR_CUP_FILES = [s.BLUE_CUP_FILE, s.RED_CUP_FILE]
+    RAND = random.randint(0,1)
+    if RAND == 0:
+        LEFT_LIQUID_COLOR = (0.3, 0.3, 1.0)
+        RIGHT_LIQUID_COLOR = (1.0, 0.4, 0.4)
+    else:
+        LEFT_LIQUID_COLOR = (1.0, 0.4, 0.4)
+        RIGHT_LIQUID_COLOR = (0.3, 0.3, 1.0)
 
     left_cup = scene.add_entity(
-        gs.morphs.Mesh(file=s.CUP_FILE, pos=LEFT_CUP_START_POS, scale=s.CUP_SCALE, euler=(90, 0, 0)),
+        gs.morphs.Mesh(file=COLOR_CUP_FILES[RAND], pos=LEFT_CUP_START_POS, scale=s.CUP_SCALE, euler=(90, 0, 0)),
     )
     left_liquid = scene.add_entity(
         material=gs.materials.PBD.Liquid(),
@@ -71,13 +80,13 @@ def main():
             pos=LEFT_CUP_START_POS + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
         ),
         surface = gs.surfaces.Default(
-            color    = (1.0, 0.4, 0.4),
+            color    = LEFT_LIQUID_COLOR,
             vis_mode = 'particle'
         )
     )
 
     right_cup = scene.add_entity(
-        gs.morphs.Mesh(file=s.CUP_FILE, pos=RIGHT_CUP_START_POS, scale=s.CUP_SCALE, euler=(90, 0, 0)),
+        gs.morphs.Mesh(file=COLOR_CUP_FILES[RAND ^ 1], pos=RIGHT_CUP_START_POS, scale=s.CUP_SCALE, euler=(90, 0, 0)),
     )
 
     right_liquid = scene.add_entity(
@@ -88,7 +97,7 @@ def main():
             pos=RIGHT_CUP_START_POS + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
         ),
         surface = gs.surfaces.Default(
-            color    = (0.3, 0.3, 1.0),
+            color    = RIGHT_LIQUID_COLOR,
             vis_mode = 'particle'
         )
     )
