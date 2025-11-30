@@ -1,6 +1,6 @@
-POUR_LEVELS = {"high":1, "medium": 1.09, "low": 1.105}
+POUR_LEVELS = {"high":0.7, "medium": 0.75, "low": 1.105}
 POUR_SPEED = {"high":300, "medium": 225, "low": 200}
-X_OFFSET = {"high": 0.02, "medium": 0.035, "low": 0.04} 
+X_OFFSET = {"high": 0.08, "medium": 0.07, "low": 0.04} 
 
 BLUE_CUP_FILE = 'files/blue_cup.glb'
 RED_CUP_FILE = 'files/red_cup.glb'
@@ -10,6 +10,9 @@ TARGET_CUP_START_POS = (0.65, 0.0, 0.0)
 TARGET_CUP_HEIGHT = 0.12 
 TARGET_CUP_RADIUS = 0.03
 TARGET_CUP_SCALE = 0.028
+
+LEFT_CUP_START_POS = (TARGET_CUP_START_POS[0] - 0.15, 0.0, 0.0)
+RIGHT_CUP_START_POS = (TARGET_CUP_START_POS[0] + 0.15, 0.0, 0.0)
 
 CUP_HEIGHT = 0.1
 CUP_RADIUS = 0.03

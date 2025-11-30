@@ -55,8 +55,8 @@ def main():
         gs.morphs.Mesh(file=s.WHITE_CUP_FILE, pos=s.TARGET_CUP_START_POS, scale=s.TARGET_CUP_SCALE, euler=(90, 0, 0)),
     )
 
-    LEFT_CUP_START_POS = (0.5, 0.0, 0.0)
-    RIGHT_CUP_START_POS = (0.8, 0.0, 0.0)
+    # LEFT_CUP_START_POS = (0.3, 0.0, 0.0)
+    # RIGHT_CUP_START_POS = (0.6, 0.0, 0.0)
     # replace with random positions once get_cup_centers is implemented
     # LEFT_CUP_START_POS = (np.random.uniform(0.4, 0.6), 0.0, 0.0)
     # RIGHT_CUP_START_POS = (np.random.uniform(0.7, 0.9), 0.0, 0.0)
@@ -77,7 +77,7 @@ def main():
         morph=gs.morphs.Cylinder(
             height=s.LIQUID_HEIGHT,        # 12 cm tall
             radius=s.LIQUID_RADIUS,        # 3 cm radius
-            pos=LEFT_CUP_START_POS + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
+            pos=s.LEFT_CUP_START_POS + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
         ),
         surface = gs.surfaces.Default(
             color    = LEFT_LIQUID_COLOR,
@@ -94,7 +94,7 @@ def main():
         morph=gs.morphs.Cylinder(
             height=s.LIQUID_HEIGHT,        # 12 cm tall
             radius=s.LIQUID_RADIUS,        # 3 cm radius
-            pos=RIGHT_CUP_START_POS + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
+            pos=s.RIGHT_CUP_START_POS + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
         ),
         surface = gs.surfaces.Default(
             color    = RIGHT_LIQUID_COLOR,
@@ -124,7 +124,7 @@ def main():
     #     up=np.array([0,-1,0])
     # ) 
     extrinsic_matrix = np.array(
-        [[ 1.,  0.,  0.,  0.65], 
+        [[ 1.,  0.,  0.,  0.55], 
          [ 0.,  0., -1.,  -0.5],
          [ 0.,  1.,  0.,    0.],
          [ 0.,  0.,  0.,    1.]]
@@ -149,27 +149,30 @@ def main():
     
     # approach and pour from left cup
     approach(scene, franka, left_cup_pos)
-    # grasp(scene, franka)
-    # lift(scene, franka, left_cup.get_pos().cpu().numpy(), s.LIFT_HEIGHT)
-    # move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
-    # rotate(scene, franka, pour_level)
-    # move_dist(scene, franka, 0, -1.0 * s.X_OFFSET[pour_level])
-    # lift(scene, franka, left_cup.get_pos().cpu().numpy(), 0.08)
-    # ungrasp(scene, franka)
-    # move_dist(scene, franka, 1, 0.05)
+    grasp(scene, franka)
+    lift(scene, franka, left_cup.get_pos().cpu().numpy(), s.LIFT_HEIGHT)
+    move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
+    rotate(scene, franka, pour_level, 1)
+    move_dist(scene, franka, 0, -1.0 * s.X_OFFSET[pour_level])
+    lift(scene, franka, left_cup.get_pos().cpu().numpy(), 0.08)
+    ungrasp(scene, franka)
+    move_dist(scene, franka, 1, 0.06)
     # move_dist(scene, franka, 1, 0.1)
-    # move_dist(scene, franka, 0, -0.2)
+    move_dist(scene, franka, 0, 0.3, 100)
 
 
     r_center_x, r_center_y = get_cup_centers(cam)[1] #currently hardcoded (243, 130)
     right_cup_pos = pixel_to_world(K, r_center_x, r_center_y)
-    # approach(franka, right_cup_pos)
-    # grasp(franka)
-    # lift(franka, right_cup_pos, lift_height)
-    # move_horizontally(franka, x_offset[pour_level]) # x_offset should depend on pour level + what cup it is 
-    # rotate(franka, pour_level)
-    # move_horizontally(franka, -x_offset[pour_level])
-    # lift(franka, right_cup.get_pos().cpu().numpy(), 0.08)
+    approach(scene, franka, right_cup_pos)
+    grasp(scene, franka)
+
+    lift(scene, franka, right_cup_pos, s.LIFT_HEIGHT)
+    move_dist(scene, franka, 0, -s.X_OFFSET[pour_level]) # x_offset should depend on pour level + what cup it is 
+    rotate(scene, franka, pour_level, -1)
+    move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
+    lift(scene, franka, right_cup.get_pos().cpu().numpy(), 0.08)
+    ungrasp(scene, franka)
+    move_dist(scene, franka, 1, 0.06)
 
     # stir liquids in target cup
     # approach(scene, franka, s.ROD_START_POS)
@@ -180,19 +183,19 @@ def main():
 
     print("----------")
     print("PREDICTED LEFT CUP POS: ", left_cup_pos)
-    print("ACTUAL LEFTCUP POS: ", LEFT_CUP_START_POS)
+    print("ACTUAL LEFTCUP POS: ", s.LEFT_CUP_START_POS)
     print("----------")
     print("PREDICTED RIGHT CUP POS: ", right_cup_pos)
-    print("ACTUAL RIGHT CUP POS: ", RIGHT_CUP_START_POS)
+    print("ACTUAL RIGHT CUP POS: ", s.RIGHT_CUP_START_POS)
     print("----------\n")
 
-    in_cup, total = count_particles_in_cup(left_cup, left_liquid, s.CUP_HEIGHT, s.CUP_RADIUS)
-    in_cup2, total = count_particles_in_cup(target_cup, left_liquid, s.TARGET_CUP_HEIGHT, s.TARGET_CUP_RADIUS)
+    in_left_cup, total = count_particles_in_cup(left_cup, left_liquid, s.CUP_HEIGHT, s.CUP_RADIUS)
+    in_target_cup, total = count_particles_in_cup(target_cup, left_liquid, s.TARGET_CUP_HEIGHT, s.TARGET_CUP_RADIUS)
 
     print(f"\n=== Final Particle Results ===")
-    print(f"Total particles in cup: {in_cup}/{total} ({100*in_cup/total:.1f}%)")
-    print(f"Total particles in cup2: {in_cup2}/{total} ({100*in_cup2/total:.1f}%)")
-    print(f"Percentage spilled: {100*(1 - (in_cup + in_cup2) / total):.1f}%")
+    print(f"Total particles in left cup: {in_left_cup}/{total} ({100*in_left_cup/total:.1f}%)")
+    print(f"Total particles in target cup: {in_target_cup}/{total} ({100*in_target_cup/total:.1f}%)")
+    print(f"Percentage spilled: {100*(1 - (in_left_cup + in_target_cup) / total):.1f}%")
 
 if __name__ == "__main__":
     main()

@@ -77,7 +77,7 @@ grasp_pos    = target_pos.copy() + gripper_offset
 
 def approach(scene, franka, cup_pos):
     # -- preapproach
-    target_pos = np.array(cup_pos) + np.array([0.0, 0.0, 0.04])
+    target_pos = np.array(cup_pos) + np.array([0.0, -0.02, 0.04])
     pregrasp_pos = target_pos - approach_dir * pregrasp_offset
     grasp_pos    = target_pos.copy() + gripper_offset
     end_effector = franka.get_link('hand')
@@ -142,7 +142,7 @@ def lift(scene, franka, cup_pos, lift_height):
     for _ in range(100):
         scene.step()
 
-def move_dist(scene, franka, direction, dist):
+def move_dist(scene, franka, direction, dist, n_move_steps=50):
     '''
     direction = 0, 1, 2 to represent x, y, z respectively
 
@@ -152,7 +152,7 @@ def move_dist(scene, franka, direction, dist):
     current_pos = end_effector.get_pos().cpu().numpy()
     target_pos_closer = current_pos.copy()
     target_pos_closer[direction] += dist  # move dist in +direction
-    n_move_steps = 50
+    # n_move_steps = 50
 
     for i in range(n_move_steps):
         alpha = i / n_move_steps
@@ -171,17 +171,31 @@ def move_dist(scene, franka, direction, dist):
         scene.step()
 
 # ------------- rotate to pour ----------------
-def rotate(scene, franka, pour_level):
+def rotate(scene, franka, pour_level, direction=1):
+    '''
+    direction = 1 for clockwise, -1 for counterclockwise
+    pour_level = "high", "medium", "low"
+    '''
     joint7_idx = 6
     current_angle = franka.get_dofs_position([joint7_idx]).cpu().numpy()[0]
-    target_angle = settings.POUR_LEVELS[pour_level]
+    # limits = franka.get_dof_limits([joint7_idx])
+    # print(f"Joint 7 limits: {limits}")
+
+    # print("CURRENT ANGLE:", current_angle)
+    target_angle = direction*settings.POUR_LEVELS[pour_level]
+    # the commented out code below doesn't work
+    # if direction == -1:
+    #     target_angle = current_angle + abs(target_angle)
+    # else:
+    #     target_angle = current_angle - abs(target_angle)
+    # print("TARGET ANGLE:", target_angle)
     n_steps = settings.POUR_SPEED[pour_level]  # More steps = slower rotation
 
     for i in range(n_steps):
         # Smoothly interpolate from current to target angle
         alpha = i / n_steps
         intermediate_angle = (1 - alpha) * current_angle + alpha * target_angle
-        
+        # print("intermediate angle:", intermediate_angle)
         franka.control_dofs_position(
             np.array([intermediate_angle]),
             np.array([joint7_idx]),
@@ -382,7 +396,8 @@ def look_at_transform(pos, lookat, up):
     T[:3, 3] = pos     # position
     return T
 
-camera_position = np.array([0.65, 0.5, 0.]) #x->x, y->-z, z->y
+camera_position = np.array([settings.CAM_POS[0], -settings.CAM_POS[1], settings.CAM_POS[2]])
+# camera_position = np.array([0.55, 0.5, 0.]) #x->x, y->-z, z->y
 R_cam_to_world = np.array([
     [1,  0,  0],  # camera X → world X
     [0,  0, -1],  # camera Y → world -Z
