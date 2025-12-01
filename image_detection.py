@@ -23,7 +23,7 @@ def detect_colored_cups(image_bgr, min_area=500):
 	image_bgr: OpenCV BGR image (uint8, shape HxWx3)
 	min_area: minimum contour area to accept as a cup (in pixels)
 	
-	Returns: list of dicts: { "color": str, "center": (cx, cy), "area": float }
+	Returns: dict: {"red":(cx, cy), "blue":(cx, cy)}
 	"""
 	hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
 	results = {color: [] for color in COLOR_RANGES}  # initialize dict

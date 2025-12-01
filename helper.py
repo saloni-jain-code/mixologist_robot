@@ -127,6 +127,7 @@ def get_camera_render(cam):
     '''
     returns an array of dictionaries containing the various colors of cups we detect as well as a depth array
     for example {"red":[(cx,cy),...], "blue":[...], ...}
+    {'red': [(243, 126)], 'green': [], 'blue': [(76, 126)]}
     '''
     rgb_arr, depth_arr, seg_arr, normal_arr = cam.render(depth=True)
     # print("RGB", rgb_arr[0])
@@ -135,6 +136,20 @@ def get_camera_render(cam):
     bgr_frame = cv2.cvtColor(rgb_arr, cv2.COLOR_RGB2BGR)
     cups = detect_colored_cups(bgr_frame)
     print(cups)
+    gray = cv2.cvtColor(rgb_arr, cv2.COLOR_BGR2GRAY)
+
+    blue_cup_x = cups["blue"][0][0]
+    blue_cup_y = cups["blue"][0][1]
+
+    red_cup_x = cups["red"][0][0]
+    red_cup_y = cups["red"][0][1]
+
+    plt.plot(red_cup_x, red_cup_y, 'ro') 
+    plt.plot(blue_cup_x, blue_cup_y, 'bo') 
+    plt.imshow(gray)
+    plt.show()
+
+    
     return cups, depth_arr
     # print("DEPTH ARR SHAPE", depth_arr.shape)
     gray = cv2.cvtColor(rgb_arr, cv2.COLOR_BGR2GRAY)

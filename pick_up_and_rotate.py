@@ -13,14 +13,14 @@ import sys
 import matplotlib.pyplot as plt
 import settings as s
 import random
-from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, pixel_to_world, get_cup_centers)
+from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, pixel_to_world, get_cup_centers, get_camera_render, get_cup_world_coordinates)
 
 def main(): 
     pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
     print("Pour level (high, medium, or low): ", pour_level)
 
     ########################## init and create a scene ##########################
-    gs.init(backend=gs.cpu)
+    gs.init(backend=gs.gpu)
 
     scene = gs.Scene(
         sim_options = gs.options.SimOptions(
@@ -143,19 +143,30 @@ def main():
     ########################## EXECUTION PIPELINE ##########################
     for _ in range(50):
         scene.step()
-# <<<<<<< opencv
-    cup, depth = get_camera_render(cam)
-    cup_world_coordinates = get_cup_world_coordinates(K, extrinsic_matrix, 160, 15, depth[160, 15])
-    print("CUP WORLD COORIDNATES", cup_world_coordinates)
-    approach(scene, franka, cup_world_coordinates)
-# =======
 
-#     l_center_x, l_center_y = get_cup_centers(cam)[0] #currently hardcoded (75,130)
-#     left_cup_pos = pixel_to_world(K, l_center_x, l_center_y)
+    cups, depth = get_camera_render(cam)
+
+    blue_cup_x = cups["blue"][0][0]
+    blue_cup_y = cups["blue"][0][1]
+
+    red_cup_x = cups["red"][0][0]
+    red_cup_y = cups["red"][0][1]
+
+    # detect if red cup or blue cup is the left cup
+    if blue_cup_x < red_cup_x:
+        left_cup_x = blue_cup_x
+        left_cup_y = blue_cup_y
+        right_cup_x = red_cup_x
+        right_cup_y = red_cup_y
+    else: 
+        left_cup_x = red_cup_x
+        left_cup_y = red_cup_y
+        right_cup_x = blue_cup_x
+        right_cup_y = blue_cup_y
     
-#     # approach and pour from left cup
-#     approach(scene, franka, left_cup_pos)
-# >>>>>>> main
+    # pour left cup first
+    left_cup_pos = pixel_to_world(K, left_cup_x, left_cup_y)
+    approach(scene, franka, left_cup_pos)
     grasp(scene, franka)
     lift(scene, franka, left_cup.get_pos().cpu().numpy(), s.LIFT_HEIGHT)
     move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
@@ -164,15 +175,12 @@ def main():
     lift(scene, franka, left_cup.get_pos().cpu().numpy(), 0.08)
     ungrasp(scene, franka)
     move_dist(scene, franka, 1, 0.06)
-    # move_dist(scene, franka, 1, 0.1)
     move_dist(scene, franka, 0, 0.3, 100)
 
-
-    r_center_x, r_center_y = get_cup_centers(cam)[1] #currently hardcoded (243, 130)
-    right_cup_pos = pixel_to_world(K, r_center_x, r_center_y)
+    # pour right cup next
+    right_cup_pos = pixel_to_world(K, right_cup_x, right_cup_y)
     approach(scene, franka, right_cup_pos)
     grasp(scene, franka)
-
     lift(scene, franka, right_cup_pos, s.LIFT_HEIGHT)
     move_dist(scene, franka, 0, -s.X_OFFSET[pour_level]) # x_offset should depend on pour level + what cup it is 
     rotate(scene, franka, pour_level, -1)
