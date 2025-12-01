@@ -7,9 +7,12 @@ from image_detection import detect_colored_cups
 motors_dof  = np.arange(7)
 fingers_dof = np.arange(7, 9)
 
-target_pos = np.array(settings.CUP_START_POS) - np.array([0.0, 0.0, 0.03])
+target_pos = np.array(settings.TARGET_CUP_START_POS) - np.array([0.0, 0.0, 0.03])
 approach_dir = np.array([0.0, 1.0, 0.0])  # approach from -Y toward +Y
 
+#-----------------------------------------------------------------------
+#   MOTOR FUNCTIONS
+#-----------------------------------------------------------------------
 def mat_to_quat_wxyz(R):
     """Rotation matrix → quaternion [w,x,y,z]."""
     m00,m01,m02 = R[0,0], R[0,1], R[0,2]
@@ -73,10 +76,9 @@ close_force = -0.2
 # pregrasp_pos = target_pos - approach_dir * pregrasp_offset
 grasp_pos    = target_pos.copy() + gripper_offset
 
-########################## helpers ##########################
 def approach(scene, franka, cup_pos):
     # -- preapproach
-    target_pos = np.array(cup_pos) + np.array([0.0, 0.0, 0.09])
+    target_pos = np.array(cup_pos) + np.array([0.0, -0.02, 0.04])
     pregrasp_pos = target_pos - approach_dir * pregrasp_offset
     grasp_pos    = target_pos.copy() + gripper_offset
     end_effector = franka.get_link('hand')
@@ -84,7 +86,7 @@ def approach(scene, franka, cup_pos):
             link=end_effector, 
             pos=pregrasp_pos, 
             quat=side_quat
-            )
+    )
     q_pre[-2:] = open_width
     path = franka.plan_path(qpos_goal=q_pre, num_waypoints=200)
     for wp in path:
@@ -290,7 +292,7 @@ def lift(scene, franka, cup_pos, lift_height):
     for _ in range(100):
         scene.step()
 
-def move_dist(scene, franka, direction, dist):
+def move_dist(scene, franka, direction, dist, n_move_steps=50):
     '''
     direction = 0, 1, 2 to represent x, y, z respectively
 
@@ -300,7 +302,7 @@ def move_dist(scene, franka, direction, dist):
     current_pos = end_effector.get_pos().cpu().numpy()
     target_pos_closer = current_pos.copy()
     target_pos_closer[direction] += dist  # move dist in +direction
-    n_move_steps = 50
+    # n_move_steps = 50
 
     for i in range(n_move_steps):
         alpha = i / n_move_steps
@@ -319,17 +321,31 @@ def move_dist(scene, franka, direction, dist):
         scene.step()
 
 # ------------- rotate to pour ----------------
-def rotate(scene, franka, pour_level):
+def rotate(scene, franka, pour_level, direction=1):
+    '''
+    direction = 1 for clockwise, -1 for counterclockwise
+    pour_level = "high", "medium", "low"
+    '''
     joint7_idx = 6
     current_angle = franka.get_dofs_position([joint7_idx]).cpu().numpy()[0]
-    target_angle = settings.POUR_LEVELS[pour_level]
+    # limits = franka.get_dof_limits([joint7_idx])
+    # print(f"Joint 7 limits: {limits}")
+
+    # print("CURRENT ANGLE:", current_angle)
+    target_angle = direction*settings.POUR_LEVELS[pour_level]
+    # the commented out code below doesn't work
+    # if direction == -1:
+    #     target_angle = current_angle + abs(target_angle)
+    # else:
+    #     target_angle = current_angle - abs(target_angle)
+    # print("TARGET ANGLE:", target_angle)
     n_steps = settings.POUR_SPEED[pour_level]  # More steps = slower rotation
 
     for i in range(n_steps):
         # Smoothly interpolate from current to target angle
         alpha = i / n_steps
         intermediate_angle = (1 - alpha) * current_angle + alpha * target_angle
-        
+        # print("intermediate angle:", intermediate_angle)
         franka.control_dofs_position(
             np.array([intermediate_angle]),
             np.array([joint7_idx]),
@@ -357,8 +373,8 @@ def count_particles_in_cup(cup, liquid, cup_height, cup_radius):
     """
     # Get particle positions (shape: [n_particles, 3])
     particle_pos = liquid.get_particles_pos().cpu().numpy()
-    print("PARTICLE POS SHAPE:", particle_pos.shape)
-    print("PARTICLE POS:", particle_pos)
+    # print("PARTICLE POS SHAPE:", particle_pos.shape)
+    # print("PARTICLE POS:", particle_pos)
     # Get cup2's current position
     cup_pos = cup.get_pos().cpu().numpy()
     
@@ -418,3 +434,147 @@ def stir(scene, franka):
     
     for _ in range(30):
         scene.step()
+
+#-----------------------------------------------------------------------
+#   COMPUTER VISION FUNCTIONS
+#-----------------------------------------------------------------------
+'''
+Camera Calibrations:
+INTRINSIC MATRIX 
+[[277.12812921   0.         160.        ]
+ [  0.         277.12812921 160.        ]
+ [  0.           0.           1.        ]]
+TRANSFORMATION MATRIX 
+[[ 1.    0.    0.    0.65]
+ [ 0.    0.   -1.   -0.5 ]
+ [ 0.    1.    0.    0.  ]
+ [ 0.    0.    0.    1.  ]]
+
+
+Execution pipeline:
+media_pipe creates a bouding box around the cup and gives the coordiates of the box
+we find the center of the box or the bottom of the box (1x3 image coordinate)
+we input the 1x3 image coordinates into this function, which returns 1x3 world coordinates
+we input the world coordinates into the approach function
+'''
+
+'''
+TODO: update this function to use mediapipe to get centers of left and right cup
+'''
+def get_cup_centers(cam):
+    rgb_arr, depth_arr, seg_arr, normal_arr = cam.render(depth=True)
+
+    # print("RGB", rgb_arr[0])
+    # print("DEPTH", depth_arr[0])
+    # print("DEPTH ARR SHAPE", depth_arr.shape
+
+    gray = cv2.cvtColor(rgb_arr, cv2.COLOR_BGR2GRAY)
+    plt.plot(75, 130, 'ro') # replace this with predicted left center
+    plt.plot(243, 130, 'ro') # replace this with predicted right center
+    plt.imshow(gray)
+    plt.show()
+
+    return [(75, 130), (243, 130)]
+    #-----------------------------------------------------------------------------
+    # METHOD 1: using countours from CV2
+    # (this is troublesome cause some extra shapes are countoured e.g the rod)
+    # _, thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY) #try wo inv.
+    # contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # # Make a copy of the original image to draw on
+    # img_contours = rgb_arr.copy()  # or gray.copy() if you want grayscale background
+    # # Draw all contours in green with thickness 2
+    # cv2.drawContours(img_contours, contours, -1, (0, 255, 0), 2)
+    # # If using matplotlib, convert BGR to RGB
+    # img_contours_rgb = cv2.cvtColor(img_contours, cv2.COLOR_BGR2RGB)
+    # # Show the image with contours
+    # plt.figure(figsize=(8,6))
+    # plt.imshow(img_contours_rgb)
+    # plt.axis('off')
+    # plt.show() 
+
+    # cup_centers_px = []
+    # for cnt in contours:
+    #     M = cv2.moments(cnt)
+    #     if M["m00"] > 0:
+    #         cx = int(M["m10"] / M["m00"])
+    #         cy = int(M["m01"] / M["m00"])
+    #         cup_centers_px.append((cx, cy))
+    # print("CUP CENTERS PX:", cup_centers_px)
+
+    # plt.imshow(rgb_arr)
+    # plt.axis('off')
+    # plt.show()
+    # pc, mask_arr = cam.render_pointcloud()
+    #-----------------------------------------------------------------------------
+
+'''
+TODO: this is to find extrinsic matrix but it's currently not current
+this funtion returns R: 
+[[-1, 0, 0]
+ [ 0, 1, 0]
+ [ 0, 0, 1]]
+should be:
+[[ 1.,  0.,  0.], 
+ [ 0.,  0., -1.],
+ [ 0.,  1.,  0.]]
+'''
+def look_at_transform(pos, lookat, up):
+    '''
+    Generate the extrinsic matrix (world to camera)
+    TODO: adjust so that lookat is at CUP3 (the one that's not moving)
+    '''
+    pos = np.array(pos)
+    lookat = np.array(lookat)
+    up = np.array(up)
+
+    # forward vector (camera points toward +Y)
+    f = lookat - pos # y axis
+    f = f / np.linalg.norm(f)
+
+    # left vector  (-X direction)
+    l = np.cross(f, up) 
+    l = l / np.linalg.norm(l)
+
+    # recompute true up vector
+    u = np.cross(l, f)
+
+    # Genesis cameras look down -Z
+    T = np.eye(4)
+    T[:3, 0] = -l       # X axis
+    T[:3, 1] = f       # Y axis
+    T[:3, 2] = u       # Z axis (camera forward is -Z)
+    T[:3, 3] = pos     # position
+    return T
+
+camera_position = np.array([settings.CAM_POS[0], -settings.CAM_POS[1], settings.CAM_POS[2]])
+# camera_position = np.array([0.55, 0.5, 0.]) #x->x, y->-z, z->y
+R_cam_to_world = np.array([
+    [1,  0,  0],  # camera X → world X
+    [0,  0, -1],  # camera Y → world -Z
+    [0,  1,  0]   # camera Z → world Y
+])
+def pixel_to_world(K, u, v, depth=0.5):
+    """
+    Transform pixel coordinates to world coordinates.
+    
+    Args:
+        u, v: pixel coordinates (0 to 319)
+        depth: depth value at that pixel (in meters)
+    
+    Returns:
+        world_point: 3D point in world coordinates [x, y, z]
+    """
+    fx = K[0,0]
+    fy = K[1,1]
+    cx = K[0,2]
+    cy = K[1,2]
+
+    x_cam = (u - cx) * depth / fx
+    y_cam = -(v - cy) * depth / fy
+    z_cam = depth
+    
+    point_in_camera = np.array([x_cam, y_cam, z_cam])
+    
+    point_in_world = R_cam_to_world @ point_in_camera + camera_position
+    
+    return point_in_world
