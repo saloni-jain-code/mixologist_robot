@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import settings
 import cv2
+from image_detection import detect_colored_cups
 
 motors_dof  = np.arange(7)
 fingers_dof = np.arange(7, 9)
@@ -121,11 +122,18 @@ def get_cup_world_coordinates(intrinsic_matrix, extrinsic_matrix, image_x, image
 
 # ------------- get camera images ----------------
 def get_camera_render(cam):
+    '''
+    returns an array of dictionaries containing the various colors of cups we detect as well as a depth array
+    for example {"red":[(cx,cy),...], "blue":[...], ...}
+    '''
     rgb_arr, depth_arr, seg_arr, normal_arr = cam.render(depth=True)
     # print("RGB", rgb_arr[0])
     # print("DEPTH", depth_arr[0])
     # print("DEPTH", depth_arr[1])
-    return 160, 150, depth_arr[160, 150]
+    bgr_frame = cv2.cvtColor(rgb_arr, cv2.COLOR_RGB2BGR)
+    cups = detect_colored_cups(bgr_frame)
+    print(cups)
+    return cups, depth_arr
     # print("DEPTH ARR SHAPE", depth_arr.shape)
     gray = cv2.cvtColor(rgb_arr, cv2.COLOR_BGR2GRAY)
     plt.plot(160, 150, 'ro') 

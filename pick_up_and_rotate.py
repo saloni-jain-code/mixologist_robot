@@ -19,7 +19,7 @@ def main():
     print("Pour level (high, medium, or low): ", pour_level)
 
     ########################## init and create a scene ##########################
-    gs.init(backend=gs.gpu)
+    gs.init(backend=gs.cpu)
 
     scene = gs.Scene(
         sim_options = gs.options.SimOptions(
@@ -126,8 +126,8 @@ def main():
     ########################## EXECUTION PIPELINE ##########################
     for i in range(50):
         scene.step()
-    image_x, image_y, depth = get_camera_render(cam)
-    cup_world_coordinates = get_cup_world_coordinates(K, extrinsic_matrix, image_x, image_y, depth)
+    cup, depth = get_camera_render(cam)
+    cup_world_coordinates = get_cup_world_coordinates(K, extrinsic_matrix, 160, 15, depth[160, 15])
     print("CUP WORLD COORIDNATES", cup_world_coordinates)
     approach(scene, franka, cup_world_coordinates)
     grasp(scene, franka)
