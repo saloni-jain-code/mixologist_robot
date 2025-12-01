@@ -20,7 +20,7 @@ def main():
     print("Pour level (high, medium, or low): ", pour_level)
 
     ########################## init and create a scene ##########################
-    gs.init(backend=gs.gpu)
+    gs.init(backend=gs.cpu)
 
     scene = gs.Scene(
         sim_options = gs.options.SimOptions(
@@ -143,12 +143,19 @@ def main():
     ########################## EXECUTION PIPELINE ##########################
     for _ in range(50):
         scene.step()
+# <<<<<<< opencv
+    cup, depth = get_camera_render(cam)
+    cup_world_coordinates = get_cup_world_coordinates(K, extrinsic_matrix, 160, 15, depth[160, 15])
+    print("CUP WORLD COORIDNATES", cup_world_coordinates)
+    approach(scene, franka, cup_world_coordinates)
+# =======
 
-    l_center_x, l_center_y = get_cup_centers(cam)[0] #currently hardcoded (75,130)
-    left_cup_pos = pixel_to_world(K, l_center_x, l_center_y)
+#     l_center_x, l_center_y = get_cup_centers(cam)[0] #currently hardcoded (75,130)
+#     left_cup_pos = pixel_to_world(K, l_center_x, l_center_y)
     
-    # approach and pour from left cup
-    approach(scene, franka, left_cup_pos)
+#     # approach and pour from left cup
+#     approach(scene, franka, left_cup_pos)
+# >>>>>>> main
     grasp(scene, franka)
     lift(scene, franka, left_cup.get_pos().cpu().numpy(), s.LIFT_HEIGHT)
     move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
