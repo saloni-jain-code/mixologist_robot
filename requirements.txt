@@ -91,3 +91,5 @@ vtk==9.5.2
 wrapt==1.17.3
 z3-solver==4.15.3.0
 zipp==3.23.0
+google-generativeai>=0.4.0
+protobuf>=4.25.0

@@ -14,9 +14,57 @@ import matplotlib.pyplot as plt
 import settings as s
 import random
 from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, pixel_to_world, get_cup_centers)
+import google.generativeai as genai
+
+BARTENDER_PROMPT = """
+You are a robotic bartender.
+
+You ONLY have access to these ingredients:
+- Alcohols: Vodka, Gin, Rum
+- Mixers: Tonic, Seltzer, Cola
+
+You can pour only these amounts:
+- "low"
+- "medium"
+- "high"
+
+Given a user drink request, choose a reasonable combination of the available ingredients
+and assign a pour level ("low", "medium", or "high") to each ingredient you use.
+
+OUTPUT FORMAT (IMPORTANT):
+- Return ONLY a JSON object (no prose, no explanations).
+- Keys are ingredient names as strings.
+- Values are one of "low", "medium", "high".
+- Do not include any ingredients that are not in the available list.
+
+Example:
+
+User request: "Make me a Moscow mule."
+Your JSON output:
+{{
+  "Vodka": "medium",
+  "Seltzer": "high"
+}}
+
+Now respond for this user request:
+"{request}"
+"""
 
 def main(): 
+    genai.configure(api_key="")
+
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    user_text = ""
+
+    user_text = input("User: ")
+
+    prompt = BARTENDER_PROMPT.format(request=user_text)
+    response = model.generate_content(prompt)
+
+    print(response.text)
+
     pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
+
     print("Pour level (high, medium, or low): ", pour_level)
 
     ########################## init and create a scene ##########################
