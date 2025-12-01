@@ -6,6 +6,8 @@ pip install -r requirements.txt
 
 python pick_up_and_rotate.py
 '''
+import os
+from dotenv import load_dotenv
 import numpy as np
 import genesis as gs
 import torch
@@ -15,6 +17,8 @@ import settings as s
 import random
 from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, pixel_to_world, get_cup_centers, get_camera_render, get_cup_world_coordinates, pour_drink)
 import google.generativeai as genai
+
+load_dotenv()  
 
 BARTENDER_PROMPT = """
 You are a robotic bartender.
@@ -51,7 +55,7 @@ Now respond for this user request:
 """
 
 def main(): 
-    genai.configure(api_key="")
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
     model = genai.GenerativeModel("gemini-2.5-flash")
     user_text = ""
