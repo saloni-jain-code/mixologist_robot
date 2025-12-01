@@ -71,14 +71,14 @@ pregrasp_offset  = -0.14
 gripper_offset = np.array([0.0, 0.10, 0.0]) # offset from center of end-effector to center of grip
 retreat_distance = 0 # 0.16
 open_width  = 0.06
-close_force = -0.2
+close_force = -0.3 # was -0.2 before
 
 # pregrasp_pos = target_pos - approach_dir * pregrasp_offset
 grasp_pos    = target_pos.copy() + gripper_offset
 
 def approach(scene, franka, cup_pos):
     # -- preapproach
-    target_pos = np.array(cup_pos) + np.array([0.0, -0.02, 0.04])
+    target_pos = np.array(cup_pos) + np.array([0.0, -0.02, 0.03])
     pregrasp_pos = target_pos - approach_dir * pregrasp_offset
     grasp_pos    = target_pos.copy() + gripper_offset
     end_effector = franka.get_link('hand')
@@ -593,3 +593,35 @@ def pixel_to_world(K, u, v, depth=0.5):
     point_in_world = R_cam_to_world @ point_in_camera + camera_position
     
     return point_in_world
+
+def pour_drink(scene, franka, mixer_name, cup_entity, cam, pour_level, next_mixer_name=None):
+    cups, depth = get_camera_render(cam)
+    
+    mixer_cup_x = cups[mixer_name][0][0]
+    mixer_cup_y = cups[mixer_name][0][1]
+
+    K = cam.intrinsics
+    
+    cup_pos = pixel_to_world(K, mixer_cup_x, mixer_cup_y)
+
+    approach(scene, franka, cup_pos)
+
+    grasp(scene, franka)
+
+    current_position = cup_entity.get_pos().cpu().numpy()
+    lift(scene, franka, current_position, settings.LIFT_HEIGHT)
+    dist_to_move = settings.POUR_LOCATION[0] - current_position[0]
+    move_dist(scene, franka, 0, dist_to_move)
+
+    rotate(scene, franka, pour_level, 1)
+    move_dist(scene, franka, 0, -dist_to_move)
+    lift(scene, franka, cup_entity.get_pos().cpu().numpy(), 0.08)
+    ungrasp(scene, franka)
+    move_dist(scene, franka, 1, 0.06)
+
+    if next_mixer_name is not None:
+        next_mixer_cup_x = cups[next_mixer_name][0][0]
+        next_mixer_cup_y = cups[next_mixer_name][0][1]
+        next_cup_pos = pixel_to_world(K, next_mixer_cup_x, next_mixer_cup_y)
+        move_distance = next_cup_pos[0] - cup_entity.get_pos().cpu().numpy()[0]
+        move_dist(scene, franka, 0, move_distance, 100)
