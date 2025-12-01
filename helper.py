@@ -88,7 +88,7 @@ def approach(scene, franka, cup_pos):
             quat=side_quat
     )
     q_pre[-2:] = open_width
-    path = franka.plan_path(qpos_goal=q_pre, num_waypoints=200)
+    path = franka.plan_path(qpos_goal=q_pre, num_waypoints=500)
     for wp in path:
         franka.control_dofs_position(wp)
         scene.step()
