@@ -75,7 +75,7 @@ def main():
     print("Pour level (high, medium, or low): ", pour_level)
 
     ########################## init and create a scene ##########################
-    gs.init(backend=gs.gpu)
+    gs.init(backend=gs.cpu)
 
     scene = gs.Scene(
         sim_options = gs.options.SimOptions(
@@ -226,19 +226,21 @@ def main():
         return np.array([x, y, shelf_top_z + liquid_height / 2.0])
 
     # Use original X/Y from your settings, but override Z so they sit on the shelf
-    LEFT_CUP_X, LEFT_CUP_Y, _  = s.LEFT_CUP_START_POS
-    RIGHT_CUP_X, RIGHT_CUP_Y, _ = s.RIGHT_CUP_START_POS
+    LEFT_CUP_X, LEFT_CUP_Y, _  = s.MID_LEFT_CUP_START_POS
+    RIGHT_CUP_X, RIGHT_CUP_Y, _ = s.MID_RIGHT_CUP_START_POS
 
-    LEFT_CUP_SHELF_POS  = cup_on_shelf(LEFT_CUP_X,  LEFT_CUP_Y,  s.CUP_HEIGHT)
-    RIGHT_CUP_SHELF_POS = cup_on_shelf(RIGHT_CUP_X, RIGHT_CUP_Y, s.CUP_HEIGHT)
+    MID_LEFT_CUP_SHELF_POS  = cup_on_shelf(LEFT_CUP_X,  LEFT_CUP_Y,  s.CUP_HEIGHT)
+    MID_RIGHT_CUP_SHELF_POS = cup_on_shelf(RIGHT_CUP_X, RIGHT_CUP_Y, s.CUP_HEIGHT)
+    LOW_LEFT_CUP_SHELF_POS  = cup_on_shelf(LEFT_CUP_X,  LEFT_CUP_Y,  s.CUP_HEIGHT - 0.4)
+    LOW_RIGHT_CUP_SHELF_POS = cup_on_shelf(RIGHT_CUP_X, RIGHT_CUP_Y, s.CUP_HEIGHT - 0.4)
 
-    COLOR_CUP_FILES      = [s.BLUE_CUP_FILE, s.RED_CUP_FILE]
-    COLOR_CUP_POSITIONS  = [LEFT_CUP_SHELF_POS, RIGHT_CUP_SHELF_POS]
-    LIQUID_COLORS        = [s.BLUE, s.RED]
+    COLOR_CUP_FILES      = [s.BLUE_CUP_FILE, s.RED_CUP_FILE, s.GREEN_CUP_FILE]
+    COLOR_CUP_POSITIONS  = [MID_LEFT_CUP_SHELF_POS, MID_RIGHT_CUP_SHELF_POS, LOW_LEFT_CUP_SHELF_POS, LOW_RIGHT_CUP_SHELF_POS]
+    LIQUID_COLORS        = [s.BLUE, s.RED, s.GREEN]
     RAND                 = 0 # random.randint(0, 1)
 
     # RED CUP (randomly left or right)
-    red_cup_pos = COLOR_CUP_POSITIONS[RAND]
+    red_cup_pos = COLOR_CUP_POSITIONS[0]
     red_cup = scene.add_entity(
         gs.morphs.Mesh(
             file=s.RED_CUP_FILE,
@@ -263,7 +265,7 @@ def main():
     )
 
     # BLUE CUP (the other shelf position)
-    blue_cup_pos = COLOR_CUP_POSITIONS[RAND ^ 1]
+    blue_cup_pos = COLOR_CUP_POSITIONS[1] # changed to hardcoded for now
     blue_cup = scene.add_entity(
         gs.morphs.Mesh(
             file=s.BLUE_CUP_FILE,
@@ -286,6 +288,33 @@ def main():
             vis_mode = 'particle',
         ),
     )
+
+    # GREEN CUP
+    green_cup_pos = COLOR_CUP_POSITIONS[2]
+    green_cup = scene.add_entity(
+        gs.morphs.Mesh(
+            file=s.GREEN_CUP_FILE,
+            pos=green_cup_pos,
+            scale=s.CUP_SCALE,
+            euler=(90, 0, 0),
+        ),
+    )
+
+    green_liquid_pos = liquid_on_shelf(green_cup_pos[0], green_cup_pos[1], s.LIQUID_HEIGHT)
+    green_liquid = scene.add_entity(
+        material=gs.materials.PBD.Liquid(),
+        morph=gs.morphs.Cylinder(
+            height=s.LIQUID_HEIGHT,
+            radius=s.LIQUID_RADIUS,
+            pos=green_liquid_pos,
+        ),
+        surface=gs.surfaces.Default(
+            color    = s.GREEN,
+            vis_mode = 'particle',
+        ),
+    )
+
+    # PINK CUP
 
 
     franka = scene.add_entity(
@@ -365,11 +394,13 @@ def main():
     # pour left cup first
     ratios = {
         "red": "high",
-        "blue": "low"
+        "blue": "low",
+        "green": "medium"
     }
     cup_entity_dict = {
         "red": red_cup,
-        "blue": blue_cup
+        "blue": blue_cup,
+        "green": green_cup
     }
     for index, (mixer, lvl) in enumerate(ratios.items()):
         next_mixer = None
