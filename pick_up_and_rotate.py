@@ -264,11 +264,6 @@ def main():
     )
 
     lookat_point = np.array([0.3, -0.5, 0.5])  # Point between your cups
-    # extrinsic_matrix = look_at_transform(
-    #     pos=np.array(s.CAM_POS),
-    #     lookat=lookat_point,
-    #     up=np.array([0, 0, 1])
-    # )
 
     # T_w2c = cam.extrinsics
     # print("World to Camera ", T_w2c)
@@ -300,8 +295,6 @@ def main():
     ########################## EXECUTION PIPELINE ##########################
     for _ in range(50):
         scene.step()
-
-    # cups, depth = get_camera_render(cam)
 
     # blue_cup_x = cups["blue"][0][0]
     # blue_cup_y = cups["blue"][0][1]
@@ -335,30 +328,6 @@ def main():
         if index < len(ratios) - 1:
             next_mixer = list(ratios.items())[index+1][0]
         pour_drink(scene, franka, mixer, cup_entity_dict[mixer], cam, lvl, index, next_mixer)
-    
-    # left_cup_pos = pixel_to_world(K, left_cup_x, left_cup_y)
-    # approach(scene, franka, left_cup_pos)
-    # grasp(scene, franka)
-    # lift(scene, franka, left_cup.get_pos().cpu().numpy(), s.LIFT_HEIGHT)
-    # move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
-    # rotate(scene, franka, pour_level, 1)
-    # move_dist(scene, franka, 0, -1.0 * s.X_OFFSET[pour_level])
-    # lift(scene, franka, left_cup.get_pos().cpu().numpy(), 0.08)
-    # ungrasp(scene, franka)
-    # move_dist(scene, franka, 1, 0.06)
-    # move_dist(scene, franka, 0, 0.3, 100)
-
-    # pour right cup next
-    # right_cup_pos = pixel_to_world(K, right_cup_x, right_cup_y)
-    # approach(scene, franka, right_cup_pos)
-    # grasp(scene, franka)
-    # lift(scene, franka, right_cup_pos, s.LIFT_HEIGHT)
-    # move_dist(scene, franka, 0, -s.X_OFFSET[pour_level]) # x_offset should depend on pour level + what cup it is 
-    # rotate(scene, franka, pour_level, -1)
-    # move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
-    # lift(scene, franka, right_cup.get_pos().cpu().numpy(), 0.08)
-    # ungrasp(scene, franka)
-    # move_dist(scene, franka, 1, 0.06)
 
     # stir liquids in target cup
     # approach(scene, franka, s.ROD_START_POS)
@@ -366,14 +335,6 @@ def main():
     # lift(scene, franka, s.ROD_START_POS, s.LIFT_HEIGHT)
     # move_dist(scene, franka, 0, s.X_OFFSET[pour_level])
     # stir(scene, franka)
-
-    # print("----------")
-    # print("PREDICTED LEFT CUP POS: ", left_cup_pos)
-    # print("ACTUAL LEFTCUP POS: ", s.LEFT_CUP_START_POS)
-    # print("----------")
-    # print("PREDICTED RIGHT CUP POS: ", right_cup_pos)
-    # print("ACTUAL RIGHT CUP POS: ", s.RIGHT_CUP_START_POS)
-    # print("----------\n")
 
     in_red_cup, total_red = count_particles_in_cup(red_cup, red_liquid, s.CUP_HEIGHT, s.CUP_RADIUS)
     in_blue_cup, total_blue = count_particles_in_cup(blue_cup, blue_liquid, s.CUP_HEIGHT, s.CUP_RADIUS)
