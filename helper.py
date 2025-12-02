@@ -3,12 +3,52 @@ import matplotlib.pyplot as plt
 import settings
 import cv2
 from image_detection import detect_colored_cups
+import genesis as gs
+import math 
 
-motors_dof  = np.arange(7)
-fingers_dof = np.arange(7, 9)
+#-----------------------------------------------------------------------
+#   DEBUGGING FUNCTIONS
+#-----------------------------------------------------------------------
+def checkpoint(franka, phase_name):
+    pos = franka.get_link('hand').get_pos().cpu().numpy()
+    angle = math.degrees(get_current_angle(franka))
+    print(f"[[{phase_name.upper()}]] Pos: {pos}, Angle: {angle:.4f}")
 
-target_pos = np.array(settings.TARGET_CUP_START_POS) - np.array([0.0, 0.0, 0.03])
-approach_dir = np.array([0.0, 1.0, 0.0])  # approach from -Y toward +Y
+def add_coordinate_frame(scene, pos=(0, 0, 0), length=0.3, radius=0.01, label=""):
+    # X-axis (red), Y-axis (green), Z-axis (Blue)
+    x, y, z = pos
+    scene.add_entity(
+        gs.morphs.Cylinder(
+            pos=(x + length/2, y, z),
+            radius=radius,
+            height=length,
+            euler=(0, 90, 0),
+            fixed=True,
+        ),
+        surface=gs.surfaces.Default(color=(1, 0, 0), vis_mode='visual')
+    )
+    scene.add_entity(
+        gs.morphs.Cylinder(
+            pos=(x, y + length/2, z),
+            radius=radius,
+            height=length,
+            euler=(90, 0, 0),
+            fixed=True,
+        ),
+        surface=gs.surfaces.Default(color=(0, 1, 0), vis_mode='visual')
+    )
+    scene.add_entity(
+        gs.morphs.Cylinder(
+            pos=(x, y, z + length/2),
+            radius=radius,
+            height=length,
+            fixed=True,
+        ),
+        surface=gs.surfaces.Default(color=(0, 0, 1), vis_mode='visual')
+    )
+    
+    if label:
+        print(f"Added coordinate frame '{label}' at {pos} \n")
 
 #-----------------------------------------------------------------------
 #   COMPUTER VISION FUNCTIONS
@@ -138,7 +178,7 @@ def depth_image_to_camera_frame(K, image_x, image_y, depth):
 
     return np.array([x, y, depth])
 
-camera_position = np.array([settings.CAM_POS[0], -1. * settings.CAM_POS[1], settings.CAM_POS[2]])
+camera_position = np.array([settings.CAM_POS[0], settings.CAM_POS[1], settings.CAM_POS[2]])
 # camera_position = np.array([0.55, 0.5, 0.]) #x->x, y->-z, z->y
 R_cam_to_world = np.array([
     [1,  0,  0],  # camera X → world X
@@ -211,6 +251,12 @@ def count_particles_in_cup(cup, liquid, cup_height, cup_radius):
 #-----------------------------------------------------------------------
 #   MOTOR FUNCTIONS
 #-----------------------------------------------------------------------
+motors_dof  = np.arange(7)
+fingers_dof = np.arange(7, 9)
+
+target_pos = np.array(settings.TARGET_CUP_START_POS) - np.array([0.0, 0.0, 0.03])
+approach_dir = np.array([0.0, 1.0, 0.0])  # approach from +Y toward -Y
+
 def mat_to_quat_wxyz(R):
     """Rotation matrix → quaternion [w,x,y,z]."""
     m00,m01,m02 = R[0,0], R[0,1], R[0,2]
@@ -263,37 +309,35 @@ def side_grasp_quat(approach_dir_world, up_hint_world=np.array([0,0,1]), order="
     else:
         w,x,y,z = q_wxyz
         return np.array([x,y,z,w])
+    
 side_quat = side_grasp_quat(approach_dir, np.array([0,0,1]), order="wxyz")
-
-pregrasp_offset  = -4.0
+pregrasp_offset  = 0.24 # distance between grasp setup and actual grasp
 gripper_offset = np.array([0.0, 0.10, 0.0]) # offset from center of end-effector to center of grip
 retreat_distance = 0 # 0.16
 open_width  = 0.06
-close_force = -0.3 # was -0.2 before
-
-# pregrasp_pos = target_pos - approach_dir * pregrasp_offset
-grasp_pos    = target_pos.copy() + gripper_offset
+close_force = -0.2 # was -0.2 before
 
 def approach(scene, franka, cup_pos):
-    # -- preapproach
-    target_pos = np.array(cup_pos) + np.array([0.0, -0.00, -0.05])
-    pregrasp_pos = target_pos - approach_dir * pregrasp_offset
+    # -- set up for approach
+    target_pos = np.array(cup_pos) + np.array([0.0, 0.0, -0.05]) # just below the center of the cup
+    pregrasp_pos = target_pos + (approach_dir * pregrasp_offset)
     grasp_pos    = target_pos.copy() + gripper_offset
+    print("- Target, ", target_pos)
+    print("- Pregrasp, ", pregrasp_pos)
+    print("- Grasp pos, ", grasp_pos)
+
     end_effector = franka.get_link('hand')
     q_pre = franka.inverse_kinematics(
             link=end_effector, 
             pos=pregrasp_pos, 
             quat=side_quat
     )
-    q_pre[-2:] = open_width
-    path = franka.plan_path(qpos_goal=q_pre, num_waypoints=500)
-    print("- Pregrasp, ", pregrasp_pos)
-    print("- Grasp pos, ", grasp_pos)
+    q_pre[-2:] = open_width #open end-effector
 
+    path = franka.plan_path(qpos_goal=q_pre, num_waypoints=500)
     for wp in path:
         franka.control_dofs_position(wp)
         scene.step()
-
     # ------------- approach ----------------
     for _ in range(80): scene.step()
     n_cart_steps_in = 200 #20
@@ -420,7 +464,7 @@ def rotate(scene, franka, pour_level, direction=1):
                 np.array([2.3]),          # target angle in radians
                 np.array([joint7_idx]),   # which joint to command
             )
-        print("control force:", franka.get_dofs_control_force([joint7_idx]))
+        # print("control force:", franka.get_dofs_control_force([joint7_idx]))
         scene.step()
 
     for _ in range(40):
@@ -461,11 +505,6 @@ def stir(scene, franka):
     for _ in range(30):
         scene.step()
 
-def checkpoint(franka, phase_name):
-    pos = franka.get_link('hand').get_pos().cpu().numpy()
-    angle = get_current_angle(franka)
-    print(f"[[{phase_name}]] Pos: {pos}, Angle: {angle:.4f}")
-
 def pour_drink(scene, franka, mixer_name, cup_entity, cam, pour_level, index, next_mixer_name=None):
     cups, depth = get_camera_render(cam)
     
@@ -478,6 +517,7 @@ def pour_drink(scene, franka, mixer_name, cup_entity, cam, pour_level, index, ne
     print(f"{mixer_name} CUP POS WORLD COORDINATES: {cup_pos}")
     print("TRUE LEFT CUP START POS", settings.LEFT_CUP_START_POS)
     print("TRUE RIGHT CUP START POS", settings.RIGHT_CUP_START_POS)
+    print("\n")
 
     move_off_shelf_dist = 0.1
 
@@ -509,17 +549,17 @@ def pour_drink(scene, franka, mixer_name, cup_entity, cam, pour_level, index, ne
     rotate(scene, franka, pour_level, 1)
     move_dist(scene, franka, 0, -dist_to_move)
     move_dist(scene, franka, 1, move_off_shelf_dist)  # move it off the shelf
-    lift(scene, franka, cup_entity.get_pos().cpu().numpy(), -settings.LIFT_HEIGHT + 0.04)
+    lift(scene, franka, cup_entity.get_pos().cpu().numpy(), -settings.LIFT_HEIGHT + 0.09)
     move_dist(scene, franka, 1, -move_off_shelf_dist)  # move it back on the shelf
     ungrasp(scene, franka)
     move_dist(scene, franka, 1, move_off_shelf_dist)
 
-    if next_mixer_name is not None:
-        #adjusting for next mixer
-        print("ADJUSTING FOR NEXT MIXER")
-        next_mixer_cup_x = cups[next_mixer_name][0][0]
-        next_mixer_cup_y = cups[next_mixer_name][0][1]
-        next_cup_pos = pixel_to_world(K, next_mixer_cup_x, next_mixer_cup_y)
-        move_distance = next_cup_pos[0] - cup_entity.get_pos().cpu().numpy()[0]
-        move_dist(scene, franka, 1, 0.3, 100)
-        move_dist(scene, franka, 0, move_distance, 100)
+    # if next_mixer_name is not None:
+    #     #adjusting for next mixer
+    #     print("ADJUSTING FOR NEXT MIXER")
+    #     next_mixer_cup_x = cups[next_mixer_name][0][0]
+    #     next_mixer_cup_y = cups[next_mixer_name][0][1]
+    #     next_cup_pos = pixel_to_world(K, next_mixer_cup_x, next_mixer_cup_y)
+    #     move_distance = next_cup_pos[0] - cup_entity.get_pos().cpu().numpy()[0]
+    #     move_dist(scene, franka, 1, 0.3, 100)
+    #     move_dist(scene, franka, 0, move_distance, 100)

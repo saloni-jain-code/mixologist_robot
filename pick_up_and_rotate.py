@@ -15,7 +15,7 @@ import sys
 import matplotlib.pyplot as plt
 import settings as s
 import random
-from helper import (count_particles_in_cup, pour_drink)
+from helper import (count_particles_in_cup, add_coordinate_frame, pour_drink)
 import google.generativeai as genai
 
 load_dotenv()  
@@ -194,7 +194,7 @@ def main():
     COLOR_CUP_FILES      = [s.BLUE_CUP_FILE, s.RED_CUP_FILE]
     COLOR_CUP_POSITIONS  = [LEFT_CUP_SHELF_POS, RIGHT_CUP_SHELF_POS]
     LIQUID_COLORS        = [s.BLUE, s.RED]
-    RAND                 = 0 # random.randint(0, 1)
+    RAND                 = 1#0 # random.randint(0, 1)
 
     # RED CUP (randomly left or right)
     red_cup_pos = COLOR_CUP_POSITIONS[RAND]
@@ -286,6 +286,7 @@ def main():
     #      [ 0.,  0.,  0.,    1.]]
     # )
 
+    # add_coordinate_frame(scene)
     scene.build()
 
     # --- control gains ----------------------------------------------------------
