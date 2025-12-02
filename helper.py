@@ -150,6 +150,12 @@ def get_camera_render(cam):
     red_cup_x = cups["red"][0][0]
     red_cup_y = cups["red"][0][1]
 
+    # blue_cup_x = 76
+    # blue_cup_y = 126
+
+    # red_cup_x = 243
+    # red_cup_y = 126
+
     plt.plot(red_cup_x, red_cup_y, 'ro') 
     plt.plot(blue_cup_x, blue_cup_y, 'bo') 
     plt.imshow(gray)

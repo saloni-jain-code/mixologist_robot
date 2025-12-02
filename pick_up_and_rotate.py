@@ -24,8 +24,8 @@ BARTENDER_PROMPT = """
 You are a robotic bartender.
 
 You ONLY have access to these ingredients:
-- Alcohols: Vodka, Gin, Rum
-- Mixers: Tonic, Seltzer, Cola
+- Alcohols: Vodka
+- Mixers: Tonic, Seltzer, Orange Juice, Cranberry Juice
 
 You can pour only these amounts:
 - "low"
@@ -75,7 +75,7 @@ def main():
     print("Pour level (high, medium, or low): ", pour_level)
 
     ########################## init and create a scene ##########################
-    gs.init(backend=gs.gpu)
+    gs.init(backend=gs.cpu)
 
     scene = gs.Scene(
         sim_options = gs.options.SimOptions(
@@ -112,6 +112,9 @@ def main():
     z_bottom = 0.1                      # bottom shelf height (center)
     z_step   = (leg_height - 0.1) / 2.0 # spacing between shelves
     z_layers = [z_bottom + i * z_step for i in range(num_layers)]
+    SHELF_LAYER_INDEX = 1  # e.g., middle shelf
+    shelf_z_center    = z_layers[SHELF_LAYER_INDEX]
+    shelf_top_z       = shelf_z_center + shelf_thick / 2.0
 
     # --------------------------------------------------
     # Vertical posts (cylinders)
@@ -152,18 +155,13 @@ def main():
             surface=gs.surfaces.Default(color=(0.7, 0.7, 0.7)),
         )
 
-    # --------------------------------------------------
-    # Build + run
-    # --------------------------------------------------
-    scene.build()
-
-    rod = scene.add_entity(
-            morph=gs.morphs.Cylinder(
-                height=s.ROD_HEIGHT,
-                radius=s.ROD_RADIUS,
-                pos=s.ROD_START_POS,  # same height as the cups, but displaced to the right
-            )
-    )
+    # rod = scene.add_entity(
+    #         morph=gs.morphs.Cylinder(
+    #             height=s.ROD_HEIGHT,
+    #             radius=s.ROD_RADIUS,
+    #             pos=s.ROD_START_POS,  # same height as the cups, but displaced to the right
+    #         )
+    # )
 
     plane = scene.add_entity(
         morph=gs.morphs.Plane(),
@@ -181,44 +179,114 @@ def main():
     # replace with random positions once get_cup_centers is implemented
     # LEFT_CUP_START_POS = (np.random.uniform(0.4, 0.6), 0.0, 0.0)
     # RIGHT_CUP_START_POS = (np.random.uniform(0.7, 0.9), 0.0, 0.0)
-    COLOR_CUP_FILES = [s.BLUE_CUP_FILE, s.RED_CUP_FILE]
-    COLOR_CUP_POSITIONS = [s.LEFT_CUP_START_POS, s.RIGHT_CUP_START_POS]
-    LIQUID_COLORS = [s.BLUE, s.RED]
-    RAND = random.randint(0,1)
+    # COLOR_CUP_FILES = [s.BLUE_CUP_FILE, s.RED_CUP_FILE]
+    # COLOR_CUP_POSITIONS = [s.LEFT_CUP_START_POS, s.RIGHT_CUP_START_POS]
+    # LIQUID_COLORS = [s.BLUE, s.RED]
+    # RAND = random.randint(0,1)
 
+    # red_cup = scene.add_entity(
+    #     gs.morphs.Mesh(file=s.RED_CUP_FILE, pos=COLOR_CUP_POSITIONS[RAND], scale=s.CUP_SCALE, euler=(90, 0, 0)),
+    # )
+
+    # red_liquid = scene.add_entity(
+    #     material=gs.materials.PBD.Liquid(),
+    #     morph=gs.morphs.Cylinder(
+    #         height=s.LIQUID_HEIGHT,        # 12 cm tall
+    #         radius=s.LIQUID_RADIUS,        # 3 cm radius
+    #         pos=COLOR_CUP_POSITIONS[RAND] + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
+    #     ),
+    #     surface = gs.surfaces.Default(
+    #         color    = s.RED,
+    #         vis_mode = 'particle'
+    #     )
+    # )
+
+    # blue_cup = scene.add_entity(
+    #     gs.morphs.Mesh(file=s.BLUE_CUP_FILE, pos=COLOR_CUP_POSITIONS[RAND ^ 1], scale=s.CUP_SCALE, euler=(90, 0, 0)),
+    # )
+
+    # blue_liquid = scene.add_entity(
+    #     material=gs.materials.PBD.Liquid(),
+    #     morph=gs.morphs.Cylinder(
+    #         height=s.LIQUID_HEIGHT,        # 12 cm tall
+    #         radius=s.LIQUID_RADIUS,        # 3 cm radius
+    #         pos=COLOR_CUP_POSITIONS[RAND ^ 1] + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
+    #     ),
+    #     surface = gs.surfaces.Default(
+    #         color    = s.BLUE,
+    #         vis_mode = 'particle'
+    #     )
+    # )
+
+    # Helper: put a cup on the chosen shelf, keeping original x/y
+    def cup_on_shelf(x, y, cup_height):
+        return np.array([x, y, shelf_top_z + cup_height / 2.0])
+
+    def liquid_on_shelf(x, y, liquid_height):
+        return np.array([x, y, shelf_top_z + liquid_height / 2.0])
+
+    # Use original X/Y from your settings, but override Z so they sit on the shelf
+    LEFT_CUP_X, LEFT_CUP_Y, _  = s.LEFT_CUP_START_POS
+    RIGHT_CUP_X, RIGHT_CUP_Y, _ = s.RIGHT_CUP_START_POS
+
+    LEFT_CUP_SHELF_POS  = cup_on_shelf(LEFT_CUP_X,  LEFT_CUP_Y,  s.CUP_HEIGHT)
+    RIGHT_CUP_SHELF_POS = cup_on_shelf(RIGHT_CUP_X, RIGHT_CUP_Y, s.CUP_HEIGHT)
+
+    COLOR_CUP_FILES      = [s.BLUE_CUP_FILE, s.RED_CUP_FILE]
+    COLOR_CUP_POSITIONS  = [LEFT_CUP_SHELF_POS, RIGHT_CUP_SHELF_POS]
+    LIQUID_COLORS        = [s.BLUE, s.RED]
+    RAND                 = random.randint(0, 1)
+
+    # RED CUP (randomly left or right)
+    red_cup_pos = COLOR_CUP_POSITIONS[RAND]
     red_cup = scene.add_entity(
-        gs.morphs.Mesh(file=s.RED_CUP_FILE, pos=COLOR_CUP_POSITIONS[RAND], scale=s.CUP_SCALE, euler=(90, 0, 0)),
+        gs.morphs.Mesh(
+            file=s.RED_CUP_FILE,
+            pos=red_cup_pos,
+            scale=s.CUP_SCALE,
+            euler=(90, 0, 0),
+        ),
     )
 
+    red_liquid_pos = liquid_on_shelf(red_cup_pos[0], red_cup_pos[1], s.LIQUID_HEIGHT)
     red_liquid = scene.add_entity(
         material=gs.materials.PBD.Liquid(),
         morph=gs.morphs.Cylinder(
-            height=s.LIQUID_HEIGHT,        # 12 cm tall
-            radius=s.LIQUID_RADIUS,        # 3 cm radius
-            pos=COLOR_CUP_POSITIONS[RAND] + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
+            height=s.LIQUID_HEIGHT,
+            radius=s.LIQUID_RADIUS,
+            pos=red_liquid_pos,
         ),
-        surface = gs.surfaces.Default(
+        surface=gs.surfaces.Default(
             color    = s.RED,
-            vis_mode = 'particle'
-        )
+            vis_mode = 'particle',
+        ),
     )
 
+    # BLUE CUP (the other shelf position)
+    blue_cup_pos = COLOR_CUP_POSITIONS[RAND ^ 1]
     blue_cup = scene.add_entity(
-        gs.morphs.Mesh(file=s.BLUE_CUP_FILE, pos=COLOR_CUP_POSITIONS[RAND ^ 1], scale=s.CUP_SCALE, euler=(90, 0, 0)),
+        gs.morphs.Mesh(
+            file=s.BLUE_CUP_FILE,
+            pos=blue_cup_pos,
+            scale=s.CUP_SCALE,
+            euler=(90, 0, 0),
+        ),
     )
 
+    blue_liquid_pos = liquid_on_shelf(blue_cup_pos[0], blue_cup_pos[1], s.LIQUID_HEIGHT)
     blue_liquid = scene.add_entity(
         material=gs.materials.PBD.Liquid(),
         morph=gs.morphs.Cylinder(
-            height=s.LIQUID_HEIGHT,        # 12 cm tall
-            radius=s.LIQUID_RADIUS,        # 3 cm radius
-            pos=COLOR_CUP_POSITIONS[RAND ^ 1] + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
+            height=s.LIQUID_HEIGHT,
+            radius=s.LIQUID_RADIUS,
+            pos=blue_liquid_pos,
         ),
-        surface = gs.surfaces.Default(
+        surface=gs.surfaces.Default(
             color    = s.BLUE,
-            vis_mode = 'particle'
-        )
+            vis_mode = 'particle',
+        ),
     )
+
 
     franka = scene.add_entity(
         gs.morphs.MJCF(file='xml/franka_emika_panda/panda.xml'),
