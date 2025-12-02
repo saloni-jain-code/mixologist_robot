@@ -18,7 +18,7 @@ COLOR_RANGES = {
 	# Add more colors if we need...
 }
 
-def detect_colored_cups(image_bgr, min_area=500):
+def detect_colored_cups(image_bgr, min_area=200):
 	"""
 	image_bgr: OpenCV BGR image (uint8, shape HxWx3)
 	min_area: minimum contour area to accept as a cup (in pixels)
