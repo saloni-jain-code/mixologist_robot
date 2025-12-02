@@ -15,7 +15,7 @@ import sys
 import matplotlib.pyplot as plt
 import settings as s
 import random
-from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, pixel_to_world, get_cup_centers, get_camera_render, get_cup_world_coordinates, pour_drink)
+from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, pixel_to_world, get_cup_centers, get_camera_render, get_cup_world_coordinates, pour_drink, look_at_transform)
 import google.generativeai as genai
 
 load_dotenv()  
@@ -55,17 +55,17 @@ Now respond for this user request:
 """
 
 def main(): 
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    # genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-    model = genai.GenerativeModel("gemini-2.5-flash")
-    user_text = ""
+    # model = genai.GenerativeModel("gemini-2.5-flash")
+    # user_text = ""
 
-    user_text = input("User: ")
+    # user_text = input("User: ")
 
-    prompt = BARTENDER_PROMPT.format(request=user_text)
-    response = model.generate_content(prompt)
+    # prompt = BARTENDER_PROMPT.format(request=user_text)
+    # response = model.generate_content(prompt)
 
-    print(response.text)
+    # print(response.text)
 
     pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
 
@@ -75,7 +75,7 @@ def main():
     print("Pour level (high, medium, or low): ", pour_level)
 
     ########################## init and create a scene ##########################
-    gs.init(backend=gs.cpu)
+    gs.init(backend=gs.gpu)
 
     scene = gs.Scene(
         sim_options = gs.options.SimOptions(
@@ -94,15 +94,15 @@ def main():
     # --------------------------------------------------
     # Shelf parameters
     # --------------------------------------------------
-    shelf_width  = 0.6   # x size (left-right)
-    shelf_depth  = 0.3   # y size (front-back)
+    shelf_width  = 0.9   # x size (left-right)
+    shelf_depth  = 0.1   # y size (front-back)
     shelf_thick  = 0.02  # z thickness
     leg_radius   = 0.015
     leg_height   = 0.6   # total height of all three layers
     num_layers   = 3
 
     # Position of the shelf center in world coordinates
-    shelf_center = np.array([0.6, 0.0, leg_height / 2.0])
+    shelf_center = np.array([0.35, -0.6, leg_height / 2.0])
 
     # y and x half-extent
     hx = shelf_width / 2.0
@@ -296,7 +296,7 @@ def main():
         model='pinhole',
         res=(320, 320),
         pos=s.CAM_POS,                         # put camera above robot
-        lookat=s.TARGET_CUP_START_POS,         # look at the cup
+        lookat=np.array(s.TARGET_CUP_START_POS)-np.array([0, 0, 0.18]),         # look at the cup # got rid of 
         up=(0,0,1),
         fov=60,
         GUI=False,                             # if True: opens a window with the camera view
@@ -304,17 +304,29 @@ def main():
         far=5.0,
     )
     K = cam.intrinsics
+
+    lookat_point = np.array([0.3, -0.5, 0.5])  # Point between your cups
+    extrinsic_matrix = look_at_transform(
+        pos=np.array(s.CAM_POS),
+        lookat=lookat_point,
+        up=np.array([0, 0, 1])
+    )
+
+    # T_w2c = cam.extrinsics
+    # print("World to Camera ", T_w2c)
+    # T_c2w = np.linalg.inv(T_w2c)
+    # print("Camera to World ", T_c2w)
     # extrinsic_matrix = look_at_transform(
     #     pos=np.array(s.CAM_POS),
     #     lookat=np.array(s.CUP_START_POS),
     #     up=np.array([0,-1,0])
     # ) 
-    extrinsic_matrix = np.array(
-        [[ 1.,  0.,  0.,  0.55], 
-         [ 0.,  0., -1.,  -0.5],
-         [ 0.,  1.,  0.,    0.],
-         [ 0.,  0.,  0.,    1.]]
-    )
+    # extrinsic_matrix = np.array(
+    #     [[ 1.,  0.,  0.,  0.55], 
+    #      [ 0.,  0., -1.,  -0.5],
+    #      [ 0.,  1.,  0.,    0.],
+    #      [ 0.,  0.,  0.,    1.]]
+    # )
 
     scene.build()
 
