@@ -91,6 +91,72 @@ def main():
     )
 
     ########################## add entities ##########################
+    # --------------------------------------------------
+    # Shelf parameters
+    # --------------------------------------------------
+    shelf_width  = 0.6   # x size (left-right)
+    shelf_depth  = 0.3   # y size (front-back)
+    shelf_thick  = 0.02  # z thickness
+    leg_radius   = 0.015
+    leg_height   = 0.6   # total height of all three layers
+    num_layers   = 3
+
+    # Position of the shelf center in world coordinates
+    shelf_center = np.array([0.6, 0.0, leg_height / 2.0])
+
+    # y and x half-extent
+    hx = shelf_width / 2.0
+    hy = shelf_depth / 2.0
+
+    # z positions of the three shelves
+    z_bottom = 0.1                      # bottom shelf height (center)
+    z_step   = (leg_height - 0.1) / 2.0 # spacing between shelves
+    z_layers = [z_bottom + i * z_step for i in range(num_layers)]
+
+    # --------------------------------------------------
+    # Vertical posts (cylinders)
+    # --------------------------------------------------
+    # corner offsets in x-y
+    corner_offsets = [
+        np.array([ hx,  hy]),
+        np.array([-hx,  hy]),
+        np.array([-hx, -hy]),
+        np.array([ hx, -hy]),
+    ]
+
+    for xy in corner_offsets:
+        x = shelf_center[0] + xy[0]
+        y = shelf_center[1] + xy[1]
+        # cylinder pos is at its center; we want it to touch ground at z=0
+        z = leg_height / 2.0
+        scene.add_entity(
+            gs.morphs.Cylinder(
+                pos=(x, y, z),
+                radius=leg_radius,
+                height=leg_height,
+                fixed=True,
+            ),
+            surface=gs.surfaces.Default(color=(0.4, 0.3, 0.2)),  # wood-ish
+        )
+
+    # --------------------------------------------------
+    # Shelves (boxes)
+    # --------------------------------------------------
+    for z in z_layers:
+        scene.add_entity(
+            gs.morphs.Box(
+                pos=(shelf_center[0], shelf_center[1], z),
+                size=(shelf_width, shelf_depth, shelf_thick),
+                fixed=True,
+            ),
+            surface=gs.surfaces.Default(color=(0.7, 0.7, 0.7)),
+        )
+
+    # --------------------------------------------------
+    # Build + run
+    # --------------------------------------------------
+    scene.build()
+
     rod = scene.add_entity(
             morph=gs.morphs.Cylinder(
                 height=s.ROD_HEIGHT,

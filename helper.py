@@ -89,6 +89,12 @@ def approach(scene, franka, cup_pos):
     )
     q_pre[-2:] = open_width
     path = franka.plan_path(qpos_goal=q_pre, num_waypoints=500)
+
+    if path is None or len(path) == 0:
+    # Planning failed → q_pre is unreachable or invalid
+    # You need a fallback: change pregrasp, try another seed, etc.
+        print("Could not find a valid path")
+        return False  # or raise, or log
     for wp in path:
         franka.control_dofs_position(wp)
         scene.step()
