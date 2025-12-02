@@ -15,7 +15,7 @@ import sys
 import matplotlib.pyplot as plt
 import settings as s
 import random
-from helper import (count_particles_in_cup, approach, grasp, ungrasp, lift, move_dist, rotate, stir, pixel_to_world, get_cup_centers, get_camera_render, get_cup_world_coordinates, pour_drink, look_at_transform)
+from helper import (count_particles_in_cup, pour_drink)
 import google.generativeai as genai
 
 load_dotenv()  
@@ -75,7 +75,10 @@ def main():
     print("Pour level (high, medium, or low): ", pour_level)
 
     ########################## init and create a scene ##########################
-    gs.init(backend=gs.gpu)
+    gs.init(
+        backend=gs.gpu, 
+        logging_level='warning'
+    )
 
     scene = gs.Scene(
         sim_options = gs.options.SimOptions(
@@ -174,50 +177,6 @@ def main():
         gs.morphs.Mesh(file=s.WHITE_CUP_FILE, pos=s.TARGET_CUP_START_POS, scale=s.TARGET_CUP_SCALE, euler=(90, 0, 0)),
     )
 
-    # LEFT_CUP_START_POS = (0.3, 0.0, 0.0)
-    # RIGHT_CUP_START_POS = (0.6, 0.0, 0.0)
-    # replace with random positions once get_cup_centers is implemented
-    # LEFT_CUP_START_POS = (np.random.uniform(0.4, 0.6), 0.0, 0.0)
-    # RIGHT_CUP_START_POS = (np.random.uniform(0.7, 0.9), 0.0, 0.0)
-    # COLOR_CUP_FILES = [s.BLUE_CUP_FILE, s.RED_CUP_FILE]
-    # COLOR_CUP_POSITIONS = [s.LEFT_CUP_START_POS, s.RIGHT_CUP_START_POS]
-    # LIQUID_COLORS = [s.BLUE, s.RED]
-    # RAND = random.randint(0,1)
-
-    # red_cup = scene.add_entity(
-    #     gs.morphs.Mesh(file=s.RED_CUP_FILE, pos=COLOR_CUP_POSITIONS[RAND], scale=s.CUP_SCALE, euler=(90, 0, 0)),
-    # )
-
-    # red_liquid = scene.add_entity(
-    #     material=gs.materials.PBD.Liquid(),
-    #     morph=gs.morphs.Cylinder(
-    #         height=s.LIQUID_HEIGHT,        # 12 cm tall
-    #         radius=s.LIQUID_RADIUS,        # 3 cm radius
-    #         pos=COLOR_CUP_POSITIONS[RAND] + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
-    #     ),
-    #     surface = gs.surfaces.Default(
-    #         color    = s.RED,
-    #         vis_mode = 'particle'
-    #     )
-    # )
-
-    # blue_cup = scene.add_entity(
-    #     gs.morphs.Mesh(file=s.BLUE_CUP_FILE, pos=COLOR_CUP_POSITIONS[RAND ^ 1], scale=s.CUP_SCALE, euler=(90, 0, 0)),
-    # )
-
-    # blue_liquid = scene.add_entity(
-    #     material=gs.materials.PBD.Liquid(),
-    #     morph=gs.morphs.Cylinder(
-    #         height=s.LIQUID_HEIGHT,        # 12 cm tall
-    #         radius=s.LIQUID_RADIUS,        # 3 cm radius
-    #         pos=COLOR_CUP_POSITIONS[RAND ^ 1] + np.array([0.,0., 0.3]),  # sitting on plane (z = height/2)),
-    #     ),
-    #     surface = gs.surfaces.Default(
-    #         color    = s.BLUE,
-    #         vis_mode = 'particle'
-    #     )
-    # )
-
     # Helper: put a cup on the chosen shelf, keeping original x/y
     def cup_on_shelf(x, y, cup_height):
         return np.array([x, y, shelf_top_z + cup_height / 2.0])
@@ -303,14 +262,13 @@ def main():
         near=0.05,
         far=5.0,
     )
-    K = cam.intrinsics
 
     lookat_point = np.array([0.3, -0.5, 0.5])  # Point between your cups
-    extrinsic_matrix = look_at_transform(
-        pos=np.array(s.CAM_POS),
-        lookat=lookat_point,
-        up=np.array([0, 0, 1])
-    )
+    # extrinsic_matrix = look_at_transform(
+    #     pos=np.array(s.CAM_POS),
+    #     lookat=lookat_point,
+    #     up=np.array([0, 0, 1])
+    # )
 
     # T_w2c = cam.extrinsics
     # print("World to Camera ", T_w2c)
@@ -375,7 +333,7 @@ def main():
         next_mixer = None
         if index < len(ratios) - 1:
             next_mixer = list(ratios.items())[index+1][0]
-        pour_drink(scene, franka, mixer, cup_entity_dict[mixer], cam, lvl, next_mixer)
+        pour_drink(scene, franka, mixer, cup_entity_dict[mixer], cam, lvl, index, next_mixer)
     
     # left_cup_pos = pixel_to_world(K, left_cup_x, left_cup_y)
     # approach(scene, franka, left_cup_pos)
