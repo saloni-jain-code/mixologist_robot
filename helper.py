@@ -495,9 +495,9 @@ def pour_drink(scene, franka, mixer_name, cup_entity, cam, pour_level, index, ne
     
     cup_pos = pixel_to_world(K, mixer_cup_x, mixer_cup_y)
     print(f"{mixer_name} CUP POS WORLD COORDINATES: {cup_pos}")
-    print("TRUE LEFT CUP START POS", settings.LEFT_CUP_START_POS)
-    print("TRUE RIGHT CUP START POS", settings.RIGHT_CUP_START_POS)
-    print("\n")
+    print("TRUE MID LEFT CUP START POS", settings.MID_LEFT_CUP_START_POS)
+    print("TRUE MID RIGHT CUP START POS", settings.MID_RIGHT_CUP_START_POS)
+
 
     move_off_shelf_dist = 0.12
 
