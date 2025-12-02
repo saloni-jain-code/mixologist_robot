@@ -67,7 +67,7 @@ def side_grasp_quat(approach_dir_world, up_hint_world=np.array([0,0,1]), order="
         return np.array([x,y,z,w])
 side_quat = side_grasp_quat(approach_dir, np.array([0,0,1]), order="wxyz")
 
-pregrasp_offset  = -0.4 # -0.14
+pregrasp_offset  = -0.4 # -0.14, -0.4
 gripper_offset = np.array([0.0, 0.10, 0.0]) # offset from center of end-effector to center of grip
 retreat_distance = 0 # 0.16
 open_width  = 0.06
@@ -141,23 +141,16 @@ def get_camera_render(cam):
     print(cups)
     gray = cv2.cvtColor(rgb_arr, cv2.COLOR_BGR2GRAY)
 
-    blue_cup_x = cups["blue"][0][0]
-    blue_cup_y = cups["blue"][0][1]
-
-    red_cup_x = cups["red"][0][0]
-    red_cup_y = cups["red"][0][1]
-
-    # blue_cup_x = 76
-    # blue_cup_y = 126
-
-    # red_cup_x = 243
-    # red_cup_y = 126
-
-    plt.plot(red_cup_x, red_cup_y, 'ro') 
-    plt.plot(blue_cup_x, blue_cup_y, 'bo') 
+    if len(cups["red"]) > 0:
+        red_cup_x = cups["red"][0][0]
+        red_cup_y = cups["red"][0][1]
+        plt.plot(red_cup_x, red_cup_y, 'ro') 
+    if len(cups["blue"]) > 0:
+        blue_cup_x = cups["blue"][0][0]
+        blue_cup_y = cups["blue"][0][1]
+        plt.plot(blue_cup_x, blue_cup_y, 'bo') 
     plt.imshow(gray)
     plt.show()
-
     
     return cups, depth_arr
     # print("DEPTH ARR SHAPE", depth_arr.shape)
@@ -337,6 +330,9 @@ def move_dist(scene, franka, direction, dist, n_move_steps=50):
     for _ in range(30):
         scene.step()
 
+def get_current_angle(franka):
+    joint7_idx = 6
+    return franka.get_dofs_position([joint7_idx]).cpu().numpy()[0]
 # ------------- rotate to pour ----------------
 def rotate(scene, franka, pour_level, direction=1):
     '''
@@ -344,18 +340,18 @@ def rotate(scene, franka, pour_level, direction=1):
     pour_level = "high", "medium", "low"
     '''
     joint7_idx = 6
-    current_angle = franka.get_dofs_position([joint7_idx]).cpu().numpy()[0]
+    current_angle = get_current_angle(franka)
     # limits = franka.get_dof_limits([joint7_idx])
     # print(f"Joint 7 limits: {limits}")
 
-    # print("CURRENT ANGLE:", current_angle)
+    print("CURRENT ANGLE:", current_angle)
     target_angle = direction*settings.POUR_LEVELS[pour_level]
     # the commented out code below doesn't work
     # if direction == -1:
     #     target_angle = current_angle + abs(target_angle)
     # else:
     #     target_angle = current_angle - abs(target_angle)
-    # print("TARGET ANGLE:", target_angle)
+    print("TARGET ANGLE:", target_angle)
     n_steps = settings.POUR_SPEED[pour_level]  # More steps = slower rotation
 
     for i in range(n_steps):
@@ -375,7 +371,7 @@ def rotate(scene, franka, pour_level, direction=1):
     for i in range(100):
         if i == 0:
             franka.control_dofs_position(
-                np.array([2.7]),          # target angle in radians
+                np.array([2.3]),          # target angle in radians
                 np.array([joint7_idx]),   # which joint to command
             )
         print("control force:", franka.get_dofs_control_force([joint7_idx]))
@@ -595,7 +591,7 @@ def pixel_to_world(K, u, v, depth=1.0):
     
     point_in_world = R_cam_to_world @ point_in_camera + camera_position
     
-    return point_in_world
+    return point_in_world    
 
 def pour_drink(scene, franka, mixer_name, cup_entity, cam, pour_level, next_mixer_name=None):
     cups, depth = get_camera_render(cam)
@@ -609,25 +605,41 @@ def pour_drink(scene, franka, mixer_name, cup_entity, cam, pour_level, next_mixe
     print(f"{mixer_name} CUP POS WORLD COORDINATES: {cup_pos}")
     print("TRUE LEFT CUP START POS", settings.LEFT_CUP_START_POS)
     print("TRUE RIGHT CUP START POS", settings.RIGHT_CUP_START_POS)
-    approach(scene, franka, cup_pos)
 
+    move_off_shelf_dist = 0.1
+
+    approach(scene, franka, cup_pos)
     grasp(scene, franka)
-    move_dist(scene, franka, 2, 0.02)
-    move_dist(scene, franka, 1, 0.1)
+    move_dist(scene, franka, 2, 0.02) # lift it off the table
+    move_dist(scene, franka, 1, move_off_shelf_dist)  # move it off the shelf
     current_position = cup_entity.get_pos().cpu().numpy()
     lift(scene, franka, current_position, settings.LIFT_HEIGHT)
-    dist_to_move = settings.POUR_LOCATION[0] - current_position[0]
-    move_dist(scene, franka, 0, dist_to_move)
+    move_dist(scene, franka, 1, -move_off_shelf_dist)  # move it back on the shelf to pour in target cup
+
+    if abs(get_current_angle(franka) - 1.7098901) < 0.001:
+        # right cup is picked up, will pour cw 
+        dist_to_move = settings.RIGHT_POUR_LOC_X - current_position[0]
+    else:
+        # left cup is picked up, will pour ccw
+        dist_to_move = settings.LEFT_POUR_LOC_X - current_position[0]
+    # dist_to_move = settings.POUR_LOCATION[0] - current_position[0]
+    print("DIST TO MOVE", dist_to_move)
+    move_dist(scene, franka, 0, dist_to_move) # move towards target cup
 
     rotate(scene, franka, pour_level, 1)
     move_dist(scene, franka, 0, -dist_to_move)
-    lift(scene, franka, cup_entity.get_pos().cpu().numpy(), 0.08)
+    move_dist(scene, franka, 1, move_off_shelf_dist)  # move it off the shelf
+    lift(scene, franka, cup_entity.get_pos().cpu().numpy(), -settings.LIFT_HEIGHT + 0.04)
+    move_dist(scene, franka, 1, -move_off_shelf_dist)  # move it back on the shelf
     ungrasp(scene, franka)
-    move_dist(scene, franka, 1, 0.06)
+    move_dist(scene, franka, 1, move_off_shelf_dist)
 
     if next_mixer_name is not None:
+        #adjusting for next mixer
+        print("ADJUSTING FOR NEXT MIXER")
         next_mixer_cup_x = cups[next_mixer_name][0][0]
         next_mixer_cup_y = cups[next_mixer_name][0][1]
         next_cup_pos = pixel_to_world(K, next_mixer_cup_x, next_mixer_cup_y)
         move_distance = next_cup_pos[0] - cup_entity.get_pos().cpu().numpy()[0]
+        move_dist(scene, franka, 1, 0.3, 100)
         move_dist(scene, franka, 0, move_distance, 100)

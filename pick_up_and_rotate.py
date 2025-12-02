@@ -235,7 +235,7 @@ def main():
     COLOR_CUP_FILES      = [s.BLUE_CUP_FILE, s.RED_CUP_FILE]
     COLOR_CUP_POSITIONS  = [LEFT_CUP_SHELF_POS, RIGHT_CUP_SHELF_POS]
     LIQUID_COLORS        = [s.BLUE, s.RED]
-    RAND                 = random.randint(0, 1)
+    RAND                 = 0 # random.randint(0, 1)
 
     # RED CUP (randomly left or right)
     red_cup_pos = COLOR_CUP_POSITIONS[RAND]
