@@ -7,6 +7,8 @@ pip install -r requirements.txt
 python pick_up_and_rotate.py
 '''
 import os
+import re
+import json
 from dotenv import load_dotenv
 import numpy as np
 import genesis as gs
@@ -25,7 +27,10 @@ You are a robotic bartender.
 
 You ONLY have access to these ingredients:
 - Alcohols: Vodka
-- Mixers: Tonic, Seltzer, Orange Juice, Cranberry Juice
+- Mixers: Tonic, Seltzer, Orange Juice
+
+Each ingredient is in a colored cup.
+Vodka is Blue, Tonic is Pink, Seltzer is Green, Orange Juice is Red
 
 You can pour only these amounts:
 - "low"
@@ -36,18 +41,20 @@ Given a user drink request, choose a reasonable combination of the available ing
 and assign a pour level ("low", "medium", or "high") to each ingredient you use.
 
 OUTPUT FORMAT (IMPORTANT):
-- Return ONLY a JSON object (no prose, no explanations).
+- Return ONLY a dictionary object (no prose, no explanations).
+- Give the colored cup name, not the ingredient
 - Keys are ingredient names as strings.
 - Values are one of "low", "medium", "high".
 - Do not include any ingredients that are not in the available list.
+- Do not wrap code with ```python or ```json.
 
 Example:
 
 User request: "Make me a Moscow mule."
-Your JSON output:
+Your Python Dictionary output:
 {{
-  "Vodka": "medium",
-  "Seltzer": "high"
+  "blue": "medium",
+  "green": "high"
 }}
 
 Now respond for this user request:
@@ -55,17 +62,18 @@ Now respond for this user request:
 """
 
 def main(): 
-    # genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-    # model = genai.GenerativeModel("gemini-2.5-flash")
-    # user_text = ""
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    user_text = ""
 
-    # user_text = input("User: ")
+    user_text = input("User: ")
 
-    # prompt = BARTENDER_PROMPT.format(request=user_text)
-    # response = model.generate_content(prompt)
-
-    # print(response.text)
+    prompt = BARTENDER_PROMPT.format(request=user_text)
+    response = model.generate_content(prompt)
+    print(response.text)
+    dictionary_response = json.loads(response.text)
+    print(dictionary_response)
 
     pour_level = sys.argv[1] if len(sys.argv) > 1 else "medium"
 
@@ -194,9 +202,9 @@ def main():
     LOW_LEFT_CUP_SHELF_POS  = cup_on_shelf(LEFT_CUP_X,  LEFT_CUP_Y,  s.CUP_HEIGHT - 0.4)
     LOW_RIGHT_CUP_SHELF_POS = cup_on_shelf(RIGHT_CUP_X, RIGHT_CUP_Y, s.CUP_HEIGHT - 0.4)
 
-    COLOR_CUP_FILES      = [s.BLUE_CUP_FILE, s.RED_CUP_FILE, s.GREEN_CUP_FILE]
+    COLOR_CUP_FILES      = [s.BLUE_CUP_FILE, s.RED_CUP_FILE, s.GREEN_CUP_FILE, s.PINK_CUP_FILE]
     COLOR_CUP_POSITIONS  = [MID_LEFT_CUP_SHELF_POS, MID_RIGHT_CUP_SHELF_POS, LOW_LEFT_CUP_SHELF_POS, LOW_RIGHT_CUP_SHELF_POS]
-    LIQUID_COLORS        = [s.BLUE, s.RED, s.GREEN]
+    LIQUID_COLORS        = [s.BLUE, s.RED, s.GREEN, s.PINK]
     RAND                 = 0 # random.randint(0, 1)
 
     # RED CUP (randomly left or right)
@@ -276,7 +284,7 @@ def main():
 
     # PINK CUP
     pink_cup_pos = COLOR_CUP_POSITIONS[3]
-    green_cup = scene.add_entity(
+    pink_cup = scene.add_entity(
         gs.morphs.Mesh(
             file=s.PINK_CUP_FILE,
             pos=pink_cup_pos,
@@ -367,20 +375,16 @@ def main():
     #     right_cup_y = blue_cup_y
     
     # pour left cup first
-    ratios = {
-        "red": "high",
-        "blue": "low",
-        "green": "medium"
-    }
     cup_entity_dict = {
         "red": red_cup,
         "blue": blue_cup,
-        "green": green_cup
+        "green": green_cup,
+        "pink": pink_cup,
     }
-    for index, (mixer, lvl) in enumerate(ratios.items()):
+    for index, (mixer, lvl) in enumerate(dictionary_response.items()):
         next_mixer = None
-        if index < len(ratios) - 1:
-            next_mixer = list(ratios.items())[index+1][0]
+        if index < len(dictionary_response) - 1:
+            next_mixer = list(dictionary_response.items())[index+1][0]
         pour_drink(scene, franka, mixer, cup_entity_dict[mixer], cam, lvl, index, next_mixer)
 
     # stir liquids in target cup
