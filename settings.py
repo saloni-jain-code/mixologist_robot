@@ -1,4 +1,4 @@
-POUR_LEVELS = {"high":1, "medium": 1, "low": 1.105}
+POUR_LEVELS = {"high":0.7, "medium": 0.7, "low": 0.8}
 POUR_SPEED = {"high":300, "medium": 225, "low": 200}
 X_OFFSET = {"high": 0.08, "medium": 0.07, "low": 0.04} 
 
@@ -34,8 +34,8 @@ LIFT_HEIGHT = 0.4
 CAM_POS = (0.55 + CUP_SHELF_X_OFFSET, CUP_SHELF_Y_OFFSET - 1.0, 0.5)
 
 POUR_LOCATION = (TARGET_CUP_START_POS[0] - 0.08, 0, LIFT_HEIGHT)
-LEFT_POUR_LOC_X = TARGET_CUP_START_POS[0] + 0.08
-RIGHT_POUR_LOC_X = TARGET_CUP_START_POS[0] - 0.08
+# LEFT_POUR_LOC_X = TARGET_CUP_START_POS[0] + 0.08
+# RIGHT_POUR_LOC_X = TARGET_CUP_START_POS[0] - 0.08
 
 BLUE = (0.3, 0.3, 1.0)
 RED = (1.0, 0.4, 0.4)

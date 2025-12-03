@@ -441,7 +441,7 @@ def rotate(scene, franka, pour_level, direction=1):
     for i in range(100):
         if i == 0:
             franka.control_dofs_position(
-                np.array([2.3]),          # target angle in radians
+                np.array([0]),          # target angle in radians
                 np.array([joint7_idx]),   # which joint to command
             )
         # print("control force:", franka.get_dofs_control_force([joint7_idx]))
@@ -516,20 +516,21 @@ def pour_drink(scene, franka, mixer_name, cup_entity, cam, pour_level, index, ne
     move_dist(scene, franka, 1, -move_off_shelf_dist)  # move it back on the shelf to pour in target cup
     checkpoint(franka, "After Move Back to Shelf")
 
-    if abs(get_current_angle(franka) - 1.7098901) < 0.001:
-        # right cup is picked up, will pour cw 
-        dist_to_move = settings.RIGHT_POUR_LOC_X - current_position[0]
-    else:
-        # left cup is picked up, will pour ccw
-        dist_to_move = settings.LEFT_POUR_LOC_X - current_position[0]
-
+    # if abs(get_current_angle(franka) - 1.7098901) < 0.001:
+    #     # right cup is picked up, will pour cw 
+    #     dist_to_move = settings.RIGHT_POUR_LOC_X - current_position[0]
+    # else:
+    #     # left cup is picked up, will pour ccw
+    #     dist_to_move = settings.LEFT_POUR_LOC_X - current_position[0]
+    dist_to_move = settings.POUR_LOCATION[0] - current_position[0]
     print("DIST TO MOVE", dist_to_move)
     move_dist(scene, franka, 0, dist_to_move) # move towards target cup
     checkpoint(franka, "Before Pour")
     rotate(scene, franka, pour_level, 1)
     checkpoint(franka, "After Pour")
-    move_dist(scene, franka, 0, -dist_to_move) 
     move_dist(scene, franka, 1, move_off_shelf_dist)  # move it off the shelf
+    move_dist(scene, franka, 0, -dist_to_move) 
+    
     lift(scene, franka, cup_entity.get_pos().cpu().numpy(), -settings.LIFT_HEIGHT + 0.07)
     move_dist(scene, franka, 1, -move_off_shelf_dist)  # move it back on the shelf
     ungrasp(scene, franka)
