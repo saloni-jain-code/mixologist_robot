@@ -76,7 +76,7 @@ def main():
 
     ########################## init and create a scene ##########################
     gs.init(
-        backend=gs.gpu, 
+        backend=gs.cpu, 
         logging_level='warning'
     )
 
@@ -275,7 +275,29 @@ def main():
     )
 
     # PINK CUP
+    pink_cup_pos = COLOR_CUP_POSITIONS[3]
+    green_cup = scene.add_entity(
+        gs.morphs.Mesh(
+            file=s.PINK_CUP_FILE,
+            pos=pink_cup_pos,
+            scale=s.CUP_SCALE,
+            euler=(90, 0, 0),
+        ),
+    )
 
+    pink_liquid_pos = liquid_on_shelf(pink_cup_pos[0], pink_cup_pos[1], s.LIQUID_HEIGHT)
+    pink_liquid = scene.add_entity(
+        material=gs.materials.PBD.Liquid(),
+        morph=gs.morphs.Cylinder(
+            height=s.LIQUID_HEIGHT,
+            radius=s.LIQUID_RADIUS,
+            pos=green_liquid_pos,
+        ),
+        surface=gs.surfaces.Default(
+            color    = s.PINK,
+            vis_mode = 'particle',
+        ),
+    )
 
     franka = scene.add_entity(
         gs.morphs.MJCF(file='xml/franka_emika_panda/panda.xml'),

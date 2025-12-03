@@ -15,7 +15,20 @@ COLOR_RANGES = {
 	"blue": [
 		((90, 80, 70), (130, 255, 255)),
 	],
-	# Add more colors if we need...
+	"yellow": [
+        # Typical yellow range
+        ((20, 100, 100), (30, 255, 255)),
+    ],
+
+    "orange": [
+        # Orange sits between red and yellow
+        ((10, 120, 100), (20, 255, 255)),
+    ],
+
+    "pink": [
+        # Pink is light desaturated red; hue near magenta
+        ((145, 60, 80), (170, 255, 255)),
+    ]
 }
 
 def detect_colored_cups(image_bgr, min_area=200):

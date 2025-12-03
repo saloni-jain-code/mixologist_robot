@@ -416,11 +416,7 @@ def rotate(scene, franka, pour_level, direction=1):
 
     print("- CURRENT ANGLE:", current_angle)
     target_angle = direction*settings.POUR_LEVELS[pour_level]
-    # the commented out code below doesn't work
-    # if direction == -1:
-    #     target_angle = current_angle + abs(target_angle)
-    # else:
-    #     target_angle = current_angle - abs(target_angle)
+
     print("- TARGET ANGLE:", target_angle)
     n_steps = settings.POUR_SPEED[pour_level]  # More steps = slower rotation
 
@@ -516,12 +512,6 @@ def pour_drink(scene, franka, mixer_name, cup_entity, cam, pour_level, index, ne
     move_dist(scene, franka, 1, -move_off_shelf_dist)  # move it back on the shelf to pour in target cup
     checkpoint(franka, "After Move Back to Shelf")
 
-    # if abs(get_current_angle(franka) - 1.7098901) < 0.001:
-    #     # right cup is picked up, will pour cw 
-    #     dist_to_move = settings.RIGHT_POUR_LOC_X - current_position[0]
-    # else:
-    #     # left cup is picked up, will pour ccw
-    #     dist_to_move = settings.LEFT_POUR_LOC_X - current_position[0]
     dist_to_move = settings.POUR_LOCATION[0] - current_position[0]
     print("DIST TO MOVE", dist_to_move)
     move_dist(scene, franka, 0, dist_to_move) # move towards target cup

@@ -6,6 +6,7 @@ BLUE_CUP_FILE = 'files/blue_cup.glb'
 RED_CUP_FILE = 'files/red_cup.glb'
 WHITE_CUP_FILE = 'files/cup.obj'
 GREEN_CUP_FILE = 'files/green_cup.glb'
+PINK_CUP_FILE = 'files/pink_cup.glb'
 
 # t
 CUP_SHELF_X_OFFSET  = -0.25
@@ -43,3 +44,6 @@ POUR_LOCATION = (TARGET_CUP_START_POS[0] - 0.08, 0, LIFT_HEIGHT)
 BLUE = (0.3, 0.3, 1.0)
 RED = (1.0, 0.4, 0.4)
 GREEN = (0.4, 1.0, 0.4)
+YELLOW = (1.0, 1.0, 0.3)
+ORANGE = (1.0, 0.6, 0.2)
+PINK   = (1.0, 0.6, 0.8)
